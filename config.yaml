@@ -1,0 +1,63 @@
+# Paint-by-Numbers / Diamond-Painting Generator Configuration
+
+# Canvas settings
+canvas:
+  width_cm: 30  # Target canvas width in cm
+  height_cm: 40  # Target canvas height in cm
+  drill_size_mm: 2.5  # Size of each drill/dot in mm
+  aspect_ratio: 0.75  # 3:4 aspect ratio (width/height)
+
+# Color palette - 7 colors with DMC-equivalent codes
+palette:
+  colors:
+    - name: "Black"
+      rgb: [0, 0, 0]
+      dmc_code: "310"
+    - name: "White"
+      rgb: [255, 255, 255]
+      dmc_code: "Blanc"
+    - name: "Red"
+      rgb: [220, 20, 60]
+      dmc_code: "666"
+    - name: "Blue"
+      rgb: [0, 100, 200]
+      dmc_code: "791"
+    - name: "Yellow"
+      rgb: [255, 215, 0]
+      dmc_code: "742"
+    - name: "Green"
+      rgb: [34, 139, 34]
+      dmc_code: "704"
+    - name: "Purple"
+      rgb: [147, 112, 219]
+      dmc_code: "554"
+
+# Image processing settings
+processing:
+  dpi: 300  # Output DPI for PDF
+  color_space: "Lab"  # Use Lab color space for quantization
+  quantization_method: "kmeans"  # kmeans or median_cut
+  dithering: true  # Apply error diffusion dithering
+  seed: 42  # Random seed for reproducible results
+
+# PDF generation settings
+pdf:
+  page_size: "A4"  # A4 or A3
+  tiling: true  # Split large pattern across multiple pages
+  overlap_mm: 5  # Overlap between tiled pages in mm
+  crop_marks: true  # Add crop marks for alignment
+  margins_mm: 10  # Page margins in mm
+
+# Symbol settings
+symbols:
+  # High-contrast symbols for grid
+  symbol_set: ["●", "■", "▲", "■", "◆", "★", "✦"]
+  font_size: 8  # Symbol font size in points
+  min_contrast_ratio: 4.5  # Minimum contrast ratio for readability
+
+# Output settings
+output:
+  spare_percentage: 0.15  # Add 15% extra drills/paint
+  include_instructions: true  # Include assembly instructions
+  include_legend: true  # Include color legend
+  preview_size: [200, 267]  # Preview image size in pixels
