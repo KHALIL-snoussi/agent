@@ -1,0 +1,190 @@
+dmc,name,r,g,b
+310,Black,0,0,0
+Blanc,White,255,255,255
+666,Christmas Red (Light),220,20,60
+666,Christmas Red (Medium),208,24,48
+666,Christmas Red (Dark),196,28,36
+816,Maroon,128,0,0
+817,Christmas Red - Vy,220,20,60
+818,Beetle Black,115,25,41
+819,Baby Pink,252,182,193
+820,Baroque Pink,252,182,193
+821,Maroon,128,0,0
+822,Maroon,128,0,0
+823,Navy Blue,0,0,128
+824,Royal Blue,65,105,225
+825,Royal Blue - Very Light,173,216,230
+826,Royal Blue - Light,135,206,250
+827,Royal Blue - Medium,70,130,180
+828,Royal Blue - Dark,25,25,112
+829,Royal Blue - Very Dark,25,25,112
+830,Peacock Blue,0,128,128
+831,Peacock Blue - Very Light,224,255,255
+832,Peacock Blue - Light,127,255,212
+833,Peacock Blue - Medium,72,209,204
+834,Peacock Blue - Dark,0,139,139
+835,Peacock Blue - Very Dark,0,100,100
+836,Beige,245,245,220
+837,Beige - Very Light,245,245,220
+838,Beige - Light,245,245,220
+839,Beige - Medium,245,245,220
+840,Beige - Dark,210,180,140
+841,Beige - Very Dark,210,180,140
+842,Tan,210,180,140
+843,Tan - Very Light,210,180,140
+844,Tan - Light,210,180,140
+845,Tan - Medium,210,180,140
+846,Tan - Dark,160,82,45
+847,Tan - Very Dark,160,82,45
+848,Brown,139,69,19
+849,Brown - Very Light,222,184,135
+850,Brown - Light,210,180,140
+851,Brown - Medium,165,42,42
+852,Brown - Dark,139,69,19
+853,Brown - Very Dark,101,67,33
+854,Gray,128,128,128
+855,Gray - Very Light,211,211,211
+856,Gray - Light,192,192,192
+857,Gray - Medium,169,169,169
+858,Gray - Dark,128,128,128
+859,Gray - Very Dark,105,105,105
+860,Avocado Green,107,142,35
+861,Avocado Green - Very Light,127,255,0
+862,Avocado Green - Light,124,252,0
+863,Avocado Green - Medium,0,128,0
+864,Avocado Green - Dark,85,107,47
+865,Avocado Green - Very Dark,0,100,0
+866,Olive Green,128,128,0
+867,Olive Green - Very Light,154,205,50
+868,Olive Green - Light,107,142,35
+869,Olive Green - Medium,85,107,47
+870,Olive Green - Dark,128,128,0
+871,Olive Green - Very Dark,85,85,0
+872,Pine Green,1,121,111
+873,Pine Green - Very Light,175,238,238
+874,Pine Green - Light,127,255,212
+875,Pine Green - Medium,64,224,208
+876,Pine Green - Dark,0,139,139
+877,Pine Green - Very Dark,0,100,100
+878,Mint Green,152,251,152
+879,Mint Green - Very Light,240,255,240
+880,Mint Green - Light,144,238,144
+881,Mint Green - Medium,60,179,113
+882,Mint Green - Dark,46,125,50
+883,Mint Green - Very Dark,0,128,0
+884,Sea Green,46,139,87
+885,Sea Green - Very Light,143,188,143
+886,Sea Green - Light,60,179,113
+887,Sea Green - Medium,46,139,87
+888,Sea Green - Dark,0,100,0
+889,Sea Green - Very Dark,85,107,47
+890,Forest Green,34,139,34
+891,Forest Green - Very Light,144,238,144
+892,Forest Green - Light,60,179,113
+893,Forest Green - Medium,46,139,87
+894,Forest Green - Dark,0,100,0
+895,Forest Green - Very Dark,85,107,47
+896,Chartreuse,127,255,0
+897,Chartreuse - Very Light,127,255,0
+898,Chartreuse - Light,124,252,0
+899,Chartreuse - Medium,0,128,0
+900,Chartreuse - Dark,0,100,0
+901,Chartreuse - Very Dark,85,85,0
+902,Lemon,255,250,205
+903,Lemon - Very Light,255,255,224
+904,Lemon - Light,255,255,0
+905,Lemon - Medium,255,215,0
+906,Lemon - Dark,255,193,37
+907,Lemon - Very Dark,255,185,15
+908,Goldenrod,218,165,32
+909,Goldenrod - Very Light,255,250,205
+910,Goldenrod - Light,255,239,153
+911,Goldenrod - Medium,238,203,173
+912,Goldenrod - Dark,218,165,32
+913,Goldenrod - Very Dark,184,134,11
+914,Orange,255,140,0
+915,Orange - Very Light,255,250,205
+916,Orange - Light,255,228,181
+917,Orange - Medium,255,165,0
+918,Orange - Dark,255,140,0
+919,Orange - Very Dark,255,69,0
+920,Rust,183,65,14
+921,Rust - Very Light,255,228,181
+922,Rust - Light,255,160,122
+923,Rust - Medium,205,92,92
+924,Rust - Dark,183,65,14
+925,Rust - Very Dark,139,69,19
+926,Gray Green,169,169,169
+927,Gray Green - Very Light,211,211,211
+928,Gray Green - Light,192,192,192
+929,Gray Green - Medium,169,169,169
+930,Gray Green - Dark,128,128,128
+931,Gray Green - Very Dark,105,105,105
+932,Blue Violet,138,43,226
+933,Blue Violet - Very Light,238,130,238
+934,Blue Violet - Light,218,112,214
+935,Blue Violet - Medium,186,85,211
+936,Blue Violet - Dark,138,43,226
+937,Blue Violet - Very Dark,75,0,130
+938,Peach,255,218,185
+939,Peach - Very Light,255,250,205
+940,Peach - Light,255,228,181
+941,Peach - Medium,255,218,185
+942,Peach - Dark,255,160,122
+943,Peach - Very Dark,255,105,180
+944,Melon,255,228,181
+945,Melon - Very Light,255,250,205
+946,Melon - Light,255,239,213
+947,Melon - Medium,255,218,185
+948,Melon - Dark,255,160,122
+949,Melon - Very Dark,255,105,180
+950,Yellow Green,154,205,50
+951,Yellow Green - Very Light,127,255,0
+952,Yellow Green - Light,124,252,0
+953,Yellow Green - Medium,154,205,50
+954,Yellow Green - Dark,85,107,47
+955,Yellow Green - Very Dark,0,128,0
+956,Plum,142,69,133
+957,Plum - Very Light,221,160,221
+958,Plum - Light,218,112,214
+959,Plum - Medium,186,85,211
+960,Plum - Dark,142,69,133
+961,Plum - Very Dark,128,0,128
+962,Salmon,250,128,114
+963,Salmon - Very Light,255,250,205
+964,Salmon - Light,255,228,181
+965,Salmon - Medium,255,218,185
+966,Salmon - Dark,250,128,114
+967,Salmon - Very Dark,255,105,180
+968,Hunter Green,53,94,59
+969,Hunter Green - Very Light,144,238,144
+970,Hunter Green - Light,60,179,113
+971,Hunter Green - Medium,46,139,87
+972,Hunter Green - Dark,53,94,59
+973,Hunter Green - Very Dark,0,100,0
+974,Teal,0,128,128
+975,Teal - Very Light,224,255,255
+976,Teal - Light,127,255,212
+977,Teal - Medium,72,209,204
+978,Teal - Dark,0,139,139
+979,Teal - Very Dark,0,100,100
+980,Dark Green,0,100,0
+981,Dark Green - Very Light,144,238,144
+982,Dark Green - Light,60,179,113
+983,Dark Green - Medium,46,139,87
+984,Dark Green - Dark,0,100,0
+985,Dark Green - Very Dark,0,50,0
+986,Avocado,107,142,35
+987,Avocado - Very Light,127,255,0
+988,Avocado - Light,124,252,0
+989,Avocado - Medium,107,142,35
+990,Avocado - Dark,85,107,47
+991,Avocado - Very Dark,0,128,0
+992,Purple,128,0,128
+993,Purple - Very Light,238,130,238
+994,Purple - Light,218,112,214
+995,Purple - Medium,186,85,211
+996,Purple - Dark,128,0,128
+997,Purple - Very Dark,75,0,130
+998,Deep Rose,219,112,147
+999,Deep Rose - Very Light,255,182,193

@@ -1,0 +1,31 @@
+canvas:
+  drill_shape: square
+  drill_size_mm: 2.5
+  height_cm: 40.0
+  width_cm: 30.0
+dither:
+  auto_disable_flat: true
+  mode: ordered
+  strength: 0.35
+  variance_threshold: 10.0
+export:
+  bag_size: 200
+  margin_mm: 8.0
+  overlap_mm: 5.0
+  page: A4
+  pdf_dpi: 300
+  preview_size: !!python/tuple
+  - 1200
+  - 1600
+  spare_ratio: 0.1
+input: ''
+output_dir: out
+palette:
+  dmc_file: ../data/dmc.csv
+  max_colors: 50
+  mode: dmc
+  preserve_skin_tones: true
+processing:
+  color_space: Lab
+  quantization_method: kmeans
+  seed: 42

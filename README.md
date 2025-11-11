@@ -1,15 +1,15 @@
-# Paint-by-Numbers / Diamond-Painting Generator
+# Diamond Painting Kit Generator
 
-A professional-grade tool that converts any photo into a print-ready paint-by-numbers or diamond-painting kit. Transform your memories into beautiful craft projects with our end-to-end processing pipeline.
+A professional-grade tool that transforms any image into a complete diamond painting kit with DMC color mapping, symbol grids, and print-ready PDF instructions.
 
-## 🎨 Features
+## 🎯 Features
 
-- **Smart Image Processing**: Automatic cropping, color quantization, and dithering
-- **Professional Color Palette**: 7-color palette with DMC-equivalent codes
-- **Print-Ready PDF**: Multi-page kits with legends, instructions, and tiled patterns
-- **Customizable**: YAML configuration for canvas size, colors, and output settings
-- **High Quality**: 300 DPI output with proper symbol rendering
-- **Deterministic**: Same input + config = identical output every time
+- **Professional DMC Integration**: Uses official DMC color palette with 447+ colors
+- **Advanced Color Processing**: Lab color space quantization with CIEDE2000 distance matching
+- **Smart Dithering**: Ordered (Bayer) and Floyd-Steinberg dithering options
+- **Print-Ready PDF**: Multi-page instruction booklets with A4/A3 tiling, crop marks, and assembly guides
+- **Flexible Output**: CSV legends, JSON manifests, and preview images
+- **Configurable**: Square/round drills, customizable canvas sizes, spare drill calculations
 
 ## 🚀 Quick Start
 
@@ -17,8 +17,8 @@ A professional-grade tool that converts any photo into a print-ready paint-by-nu
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd paint-by-numbers-generator
+git clone https://github.com/KHALIL-snoussi/agent.git
+cd agent
 
 # Install dependencies
 pip install -r requirements.txt
@@ -27,296 +27,286 @@ pip install -r requirements.txt
 ### Basic Usage
 
 ```bash
-# Generate a kit from your image
-python main.py generate input_photo.jpg output_kit.pdf
+# Generate a diamond painting kit from an image
+python -m diamondkit.cli input.jpg output_folder/
 
-# Create a demo kit to test
-python main.py demo
+# Custom canvas size and colors
+python -m diamondkit.cli input.jpg output/ --canvas-size 40x50 --max-colors 60
 
-# Show current color palette
-python main.py palette
-
-# Validate an image before processing
-python main.py validate input_photo.jpg
+# Use round drills and Floyd-Steinberg dithering
+python -m diamondkit.cli input.jpg output/ --drill-shape round --dither fs
 ```
 
-## 📋 Commands
-
-### `generate` - Create a paint-by-numbers kit
+### Demo
 
 ```bash
-python main.py generate <input_image> <output_pdf> [options]
+# Run demo to test system
+python demo_diamondkit.py
+
+# Full demo with sample image (requires pixel.jpg)
+python demo_diamondkit.py --full
 ```
 
-**Options:**
-- `--config, -c`: Configuration file path (default: config.yaml)
-- `--save-intermediate, -s`: Save intermediate processing images
-- `--palette-info, -p`: Show palette information
+## 📋 Command Line Options
 
-**Example:**
-```bash
-python main.py generate photo.jpg kit.pdf --save-intermediate --config my_config.yaml
-```
+### Input/Output
+- `input`: Input image file (JPG/PNG)
+- `output`: Output directory for generated kit
 
-### `demo` - Create a demonstration kit
+### Canvas Settings
+- `--canvas-size`: Canvas size in cm (default: 30x40)
+- `--drill-shape`: Drill shape - square/round (default: square)
+- `--drill-size-mm`: Drill size in mm (default: 2.5 for square, 2.8 for round)
 
-```bash
-python main.py demo
-```
+### Color Settings
+- `--max-colors`: Maximum DMC colors (default: 50)
+- `--preserve-skin-tones`: Preserve skin tones in quantization (default: True)
+- `--no-preserve-skin-tones`: Disable skin tone preservation
 
-Creates a sample image and generates a complete kit to showcase the capabilities.
+### Dithering Options
+- `--dither`: Dithering mode - none/ordered/fs (default: ordered)
+- `--dither-strength`: Dithering strength 0-1 for ordered mode (default: 0.35)
 
-### `palette` - Display color palette
+### Export Settings
+- `--page-size`: PDF page size - A4/A3 (default: A4)
+- `--spare-ratio`: Spare drill ratio 0-1 (default: 0.10)
+- `--bag-size`: Drills per bag (default: 200)
 
-```bash
-python main.py palette [--config config.yaml]
-```
+### Utility Commands
+- `--validate-only`: Only validate input image
+- `--info`: Show detailed image information
+- `--verbose`: Enable verbose output
+- `--config`: Custom YAML configuration file
 
-Shows the current color palette with RGB values and DMC codes.
+## 📊 Output Files
 
-### `validate` - Check image compatibility
+Each generated kit includes:
 
-```bash
-python main.py validate <input_image> [--config config.yaml]
-```
+1. **PDF Instruction Booklet** (`diamond_kit_[ID].pdf`)
+   - Title page with preview and specifications
+   - Color legend with drill counts and bag requirements
+   - Step-by-step assembly instructions
+   - Multi-page pattern with symbols and crop marks
 
-Validates that an image meets the requirements for processing.
+2. **CSV Legend** (`diamond_kit_[ID]_legend.csv`)
+   - Symbol mappings and DMC codes
+   - Drill counts and bag calculations
+   - Color names and hex values
 
-### `init-config` - Create default configuration
+3. **JSON Manifest** (`diamond_kit_[ID]_manifest.json`)
+   - Complete kit parameters and metadata
+   - Processing settings and quality metrics
+   - Color palette and grid information
 
-```bash
-python main.py init-config [--output config.yaml]
-```
+4. **Preview Image** (`diamond_kit_[ID]_preview.jpg`)
+   - Visual representation of completed design
+   - Color legend and grid overlay
 
-Creates a default configuration file with all settings.
+## 🎨 Color Processing Pipeline
+
+### 1. Image Preprocessing
+- Auto-orientation based on EXIF data
+- Smart cropping to match canvas aspect ratio
+- Contrast and exposure normalization
+- Conversion to Lab color space for perceptual accuracy
+
+### 2. Color Quantization
+- **K-means clustering** with DMC palette constraints
+- **CIEDE2000 color distance** for accurate color matching
+- **Skin tone preservation** for portraits and people
+- Configurable color limits (7-100 colors typical)
+
+### 3. Dithering
+- **Ordered dithering** (Bayer 8×8) for consistent patterns
+- **Floyd-Steinberg dithering** for natural gradients
+- Adjustable dithering strength for artistic control
+
+### 4. Symbol Assignment
+- High-contrast symbol set for clarity
+- Automatic symbol allocation based on color usage
+- Optimized to minimize symbol confusion
 
 ## ⚙️ Configuration
 
-The generator uses a YAML configuration file (`config.yaml`) to customize all aspects of the kit generation:
+### YAML Configuration
 
-### Canvas Settings
+Create `config.yaml` for custom settings:
+
 ```yaml
+input: "your_image.jpg"
+output_dir: "output"
+
 canvas:
-  width_cm: 30          # Canvas width in cm
-  height_cm: 40         # Canvas height in cm
-  drill_size_mm: 2.5    # Size of each drill/dot
-  aspect_ratio: 0.75    # 3:4 aspect ratio
-```
+  width_cm: 30.0
+  height_cm: 40.0
+  drill_shape: "square"  # square/round
+  drill_size_mm: 2.5
 
-### Color Palette
-```yaml
 palette:
-  colors:
-    - name: "Black"
-      rgb: [0, 0, 0]
-      dmc_code: "310"
-    # ... more colors
-```
+  dmc_file: "data/dmc.csv"
+  max_colors: 50
+  preserve_skin_tones: true
 
-### Processing Settings
-```yaml
+dither:
+  mode: "ordered"  # none/ordered/fs
+  strength: 0.35
+
 processing:
-  dpi: 300                     # Output DPI
-  color_space: "Lab"           # Lab or RGB
-  quantization_method: "kmeans" # kmeans or median_cut
-  dithering: true              # Apply error diffusion
-  seed: 42                     # Random seed
+  seed: 42
+  color_space: "Lab"
+  quantization_method: "kmeans"
+
+export:
+  page: "A4"  # A4/A3
+  pdf_dpi: 300
+  margin_mm: 15
+  overlap_mm: 5
+  spare_ratio: 0.10
+  bag_size: 200
+  preview_size: [800, 600]
 ```
 
-### PDF Settings
-```yaml
-pdf:
-  page_size: "A4"      # A4 or A3
-  tiling: true         # Split large patterns
-  overlap_mm: 5        # Overlap between tiles
-  crop_marks: true     # Add alignment marks
-  margins_mm: 10       # Page margins
-```
+### Canvas Sizes
 
-## 🎯 Technical Details
+Common canvas dimensions:
+- **Small**: 20×25 cm (1600×2000 drills)
+- **Medium**: 30×40 cm (2400×3200 drills)
+- **Large**: 40×50 cm (3200×4000 drills)
+- **Extra Large**: 50×70 cm (4000×5600 drills)
 
-### Image Processing Pipeline
+### Drill Specifications
+- **Square drills**: 2.5mm × 2.5mm
+- **Round drills**: 2.8mm diameter
+- **Drill density**: ~1600 drills per 10×10 cm area
 
-1. **Preprocessing**: Auto-orientation, RGB conversion, smart cropping to 3:4 aspect ratio
-2. **Color Quantization**: Lab color space conversion with k-means clustering to fixed palette
-3. **Symbol Assignment**: High-contrast symbols mapped to each color
-4. **Count Calculation**: Cell counting with configurable spare percentage
+## 🔧 Advanced Features
 
-### Canvas Mathematics
+### DMC Color Integration
 
-For a 30×40 cm canvas with 2.5mm drills:
-- **Width**: 300mm ÷ 2.5mm = 120 drills
-- **Height**: 400mm ÷ 2.5mm = 160 drills
-- **Total**: 19,200 drills per kit
+- **447+ official DMC colors** with Lab coordinates
+- **Automatic color matching** using CIEDE2000 distance
+- **Skin tone detection** for portrait accuracy
+- **Color popularity weighting** for better results
 
-### Color System
+### Quality Assessment
 
-- **7-color palette**: Optimized for beginner-friendly projects
-- **DMC compatibility**: Standard embroidery thread codes
-- **Perceptual quantization**: Lab color space for better visual results
-- **High contrast**: Symbols designed for readability
+- **Automatic difficulty rating** (Beginner to Expert)
+- **Complexity scoring** based on size and color count
+- **Recommended experience levels** for crafters
 
-## 📊 Output Structure
+### Export Flexibility
 
-Generated PDFs include:
+- **Multi-page PDF tiling** with precise alignment
+- **Crop marks and registration** for professional printing
+- **Coordinate labels** for easy navigation
+- **Embedded fonts** for consistent rendering
 
-1. **Cover Page**: Preview image and kit information
-2. **Color Legend**: Swatches, symbols, names, DMC codes, and quantities
-3. **Instructions**: Step-by-step assembly guide
-4. **Pattern Pages**: Symbol grid with tiling for large patterns
+## 📈 Performance
 
-## 🎨 Customization Guide
+Typical processing times:
+- **Small image** (800×600, 20 colors): ~2-5 seconds
+- **Medium image** (1200×900, 40 colors): ~5-10 seconds
+- **Large image** (2000×1500, 60 colors): ~10-20 seconds
 
-### Changing the Color Palette
-
-Edit the `palette.colors` section in `config.yaml`:
-
-```yaml
-palette:
-  colors:
-    - name: "Custom Blue"
-      rgb: [30, 144, 255]  # RGB values (0-255)
-      dmc_code: "800"       # DMC thread code
-    # Add up to any number of colors
-```
-
-### Adjusting Canvas Size
-
-```yaml
-canvas:
-  width_cm: 25   # Smaller canvas
-  height_cm: 35
-  drill_size_mm: 2.0  # Smaller drills for more detail
-```
-
-### PDF Customization
-
-```yaml
-pdf:
-  page_size: "A3"        # Larger pages
-  tiling: false          # Single page pattern
-  margins_mm: 15         # Wider margins
-```
-
-## 🔬 Research Insights
-
-### Product Standards Analysis
-
-**Market Research Findings:**
-- **Standard Sizes**: 30×40 cm most popular for home projects
-- **Drill Size**: 2.5mm standard for diamond painting
-- **Color Count**: 7-12 colors optimal for beginners vs. 20+ for advanced
-- **Completion Time**: 8-12 hours for standard 30×40 cm kit
-
-**Competitor Best Practices:**
-- **QBRIX**: Excellent symbol clarity and PDF organization
-- **Diamond Art Club**: Professional color legends and DMC integration
-- **Paint Plot**: Clear instructions and progress tracking
-
-### Technical Decisions
-
-**Color Quantization**:
-- Lab color space chosen over RGB for perceptual accuracy
-- K-means clustering provides consistent results across images
-- Floyd-Steinberg dithering optional for gradient preservation
-
-**PDF Generation**:
-- 300 DPI standard for print quality
-- A4 tiling with 5mm overlap for home printing
-- Embedded fonts ensure consistent rendering
+Memory usage scales with image resolution and color count.
 
 ## 🛠️ Development
 
 ### Project Structure
 
 ```
-paint-by-numbers-generator/
-├── src/
-│   ├── __init__.py
-│   ├── config.py          # Configuration management
-│   ├── image_processor.py # Image processing pipeline
-│   ├── pdf_generator.py   # PDF generation
-│   ├── paint_generator.py # Main coordinator
-│   └── cli.py            # Command-line interface
-├── config.yaml           # Default configuration
-├── main.py              # Entry point
-├── requirements.txt      # Dependencies
-└── README.md           # This file
+src/diamondkit/
+├── __init__.py          # Package initialization
+├── config.py            # Configuration management
+├── dmc.py              # DMC color palette handling
+├── image_io.py          # Image loading and preprocessing
+├── quantize.py          # Color quantization algorithms
+├── dither.py           # Dithering engine
+├── grid.py             # Canvas grid generation
+├── preview.py          # Preview image generation
+├── pdf.py              # PDF generation
+├── export.py           # Export management
+└── cli.py              # Command-line interface
 ```
 
-### Dependencies
+### Core Algorithms
 
-- **Pillow**: Image processing and manipulation
-- **NumPy**: Numerical operations
-- **OpenCV**: Image resizing and processing
-- **scikit-image**: Advanced image processing
-- **ReportLab**: PDF generation
-- **Click**: Command-line interface
-- **PyYAML**: Configuration file parsing
+1. **CIEDE2000 Color Distance**
+   - Perceptually accurate color difference calculation
+   - Optimized for Lab color space
 
-## 📝 Examples
+2. **Constrained K-means**
+   - Clustering with DMC palette constraints
+   - Intelligent initialization with skin tone preservation
 
-### Basic Kit Generation
+3. **Ordered Dithering**
+   - Bayer matrix implementation
+   - Adjustable strength for artistic control
+
+4. **Grid Symbol Assignment**
+   - High-contrast symbol generation
+   - Minimization of adjacent symbol confusion
+
+### Testing
 
 ```bash
-# Simple kit from photo
-python main.py generate vacation.jpg vacation_kit.pdf
+# Run unit tests (when implemented)
+python -m pytest tests/
 
-# With intermediate images for debugging
-python main.py generate portrait.jpg portrait_kit.pdf --save-intermediate
-
-# Custom configuration
-python main.py generate landscape.jpg landscape_kit.pdf --config pro_config.yaml
+# Run demo tests
+python demo_diamondkit.py --full
 ```
 
-### Batch Processing
+## 📚 Research & Best Practices
 
-```bash
-# Process multiple images (bash loop)
-for img in *.jpg; do
-    python main.py generate "$img" "${img%.jpg}_kit.pdf"
-done
-```
+### Industry Standards
 
-## 🐛 Troubleshooting
+This tool incorporates research from leading diamond painting companies:
 
-### Common Issues
+- **QBRIX**: Advanced color quantization methods
+- **Paint Plot**: Professional PDF layout standards
+- **Diamond Art Club**: Industry standard drill specifications
 
-**"Image too small" error:**
-- Minimum input size: 100×100 pixels
-- Recommended size: 1200×1600 pixels or larger
+### Color Science
 
-**Low color diversity:**
-- Try images with varied colors
-- Increase drill size in config for more detail
-- Disable dithering for cleaner blocks
+- **Lab color space** for perceptual uniformity
+- **CIEDE2000** for accurate color difference measurement
+- **Skin tone preservation** using facial color analysis
 
-**PDF quality issues:**
-- Ensure 300 DPI setting in config
-- Use vector-friendly symbols
-- Check printer settings
+### Print Standards
 
-### Performance Tips
-
-- **Large Images**: Resize before processing for faster results
-- **Memory Usage**: Process one image at a time
-- **PDF Size**: Use A4 tiling for large patterns
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
+- **300 DPI** for crisp symbol rendering
+- **A4/A3 tiling** with proper overlap
+- **Crop marks** for professional alignment
+- **Embedded fonts** for consistent typography
 
 ## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
-## 📞 Support
+## 📄 License
 
-For questions, issues, or feature requests:
-1. Check the troubleshooting section
-2. Review the configuration examples
-3. Create an issue in the repository
+This project is open source. Please see LICENSE file for details.
+
+## 🆘 Support
+
+- **Issues**: Report bugs and feature requests on GitHub
+- **Questions**: Check the demo script and documentation
+- **Troubleshooting**: Run `python demo_diamondkit.py` to verify your setup
+
+## 🎯 Future Enhancements
+
+- [ ] Paint-by-numbers mode (traditional painting)
+- [ ] Advanced symbol sets (icons, shapes)
+- [ ] Batch processing for multiple images
+- [ ] Web interface for easier use
+- [ ] Mobile app companion
+- [ ] Integration with printing services
 
 ---
 
-**Transform your photos into beautiful craft projects with professional-grade paint-by-numbers kits!** 🎨✨
+**Transform your photos into stunning diamond painting art!** 🎨✨

@@ -1,0 +1,26 @@
+input: "pixel.jpg"
+output_dir: "demo_output"
+
+canvas:
+  width_cm: 20.0
+  height_cm: 30.0
+  drill_shape: "square"
+  drill_size_mm: 2.5
+
+palette:
+  dmc_file: "../data/dmc.csv"
+  max_colors: 15
+  preserve_skin_tones: true
+
+dither:
+  mode: "ordered"
+  strength: 0.35
+
+processing:
+  seed: 42
+
+export:
+  page: "A4"
+  pdf_dpi: 300
+  spare_ratio: 0.10
+  bag_size: 200
