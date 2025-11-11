@@ -25,23 +25,38 @@ def cli():
 @click.argument('input_image', type=click.Path(exists=True))
 @click.argument('output_pdf', type=click.Path())
 @click.option('--config', '-c', default='config.yaml', help='Configuration file path')
+@click.option('--style', '-st', type=click.Choice(['vintage', 'minimalist', 'vibrant', 'pastel', 'artistic', 'monochrome', 'popart']), 
+              help='Apply a style preset (overrides default palette)')
 @click.option('--save-intermediate', '-s', is_flag=True, help='Save intermediate processing images')
 @click.option('--palette-info', '-p', is_flag=True, help='Show current palette information')
-def generate(input_image, output_pdf, config, save_intermediate, palette_info):
+@click.option('--quality-check', '-q', is_flag=True, help='Run quality assessment before processing')
+def generate(input_image, output_pdf, config, style, save_intermediate, palette_info, quality_check):
     """
     Generate a paint-by-numbers kit from an image.
     
-    INPUT_IMAGE: Path to the input image (JPG/PNG supported)
-    OUTPUT_PDF: Path for the output PDF file
+    INPUT_IMAGE: Path to input image (JPG/PNG supported)
+    OUTPUT_PDF: Path for output PDF file
     """
     try:
-        # Initialize generator
-        generator = PaintGenerator(config)
+        # Initialize generator with optional style preset
+        generator = PaintGenerator(config, style_preset=style)
         
         # Show palette info if requested
         if palette_info:
             generator.get_palette_info()
             return
+        
+        # Run quality check if requested
+        if quality_check:
+            click.echo("🔍 Running quality assessment...")
+            quality_result = generator.assess_image_quality(input_image)
+            report = generator.quality_assessor.generate_quality_report(quality_result)
+            click.echo(report)
+            
+            if quality_result.level.value == "Low":
+                if not click.confirm("⚠️  Image quality is low. Continue anyway?"):
+                    click.echo("Processing cancelled.")
+                    return
         
         # Validate input image
         generator.validate_image(input_image)
@@ -51,7 +66,17 @@ def generate(input_image, output_pdf, config, save_intermediate, palette_info):
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Generate the kit
-        generator.generate_kit(input_image, output_pdf, save_intermediate)
+        click.echo(f"🎨 Generating paint-by-numbers kit...")
+        if style:
+            click.echo(f"📋 Using style preset: {style}")
+        
+        retrieval_code = generator.generate_kit(input_image, output_pdf, save_intermediate)
+        
+        if retrieval_code:
+            click.echo(f"🔑 Retrieval code: {retrieval_code}")
+            click.echo("💾 Keep this code safe to reprint your kit anytime!")
+        
+        click.echo(f"✅ Kit generated successfully: {output_pdf}")
         
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)

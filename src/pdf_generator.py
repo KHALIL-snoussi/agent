@@ -59,7 +59,7 @@ class PDFGenerator:
     
     def generate_pdf_kit(self, output_path: str, quantized_image: np.ndarray, 
                         symbol_grid: np.ndarray, color_counts: List[int],
-                        original_image_path: str = None):
+                        original_image_path: str = None, retrieval_code: str = None):
         """
         Generate complete PDF kit with all sections.
         """
@@ -75,7 +75,7 @@ class PDFGenerator:
         story = []
         
         # 1. Cover page with preview
-        story.extend(self._create_cover_page(quantized_image, original_image_path))
+        story.extend(self._create_cover_page(quantized_image, original_image_path, retrieval_code))
         
         # 2. Color legend
         if self.config.output.include_legend:
@@ -88,15 +88,37 @@ class PDFGenerator:
         # 4. Pattern pages (with tiling if needed)
         story.extend(self._create_pattern_pages(symbol_grid))
         
-        # Build PDF
-        doc.build(story)
+        # Build PDF with footer
+        def on_first_page(canvas, doc):
+            canvas.saveState()
+            canvas.setFont('Helvetica', 8)
+            canvas.setFillColorRGB(0.5, 0.5, 0.5)
+            canvas.drawCentredString(self.page_width/2, 15, "Print at 100% scale for best results")
+            canvas.restoreState()
+        
+        def on_later_pages(canvas, doc):
+            canvas.saveState()
+            canvas.setFont('Helvetica', 8)
+            canvas.setFillColorRGB(0.5, 0.5, 0.5)
+            canvas.drawCentredString(self.page_width/2, 15, f"Print at 100% scale • Page {doc.page}")
+            if retrieval_code:
+                canvas.drawRightString(self.page_width - self.margin, 15, f"Code: {retrieval_code}")
+            canvas.restoreState()
+        
+        doc.build(story, onFirstPage=on_first_page, onLaterPages=on_later_pages)
     
-    def _create_cover_page(self, quantized_image: np.ndarray, original_image_path: str = None) -> List:
+    def _create_cover_page(self, quantized_image: np.ndarray, original_image_path: str = None, 
+                        retrieval_code: str = None) -> List:
         """Create cover page with preview image."""
         story = []
         
         # Title
         story.append(Paragraph("Paint-by-Numbers Kit", self.styles['CustomTitle']))
+        
+        # Style preset if used
+        if self.config.style_preset:
+            style_info = f"Style: {self.config.style_preset.title()}"
+            story.append(Paragraph(style_info, self.styles['Heading3']))
         
         # Canvas info
         canvas_info = f"Canvas Size: {self.config.canvas.width_cm}×{self.config.canvas.height_cm} cm"
@@ -123,6 +145,15 @@ class PDFGenerator:
         • Difficulty: {'Beginner' if len(self.config.palette) <= 7 else 'Intermediate'}
         """
         story.append(Paragraph(info_text, self.styles['Normal']))
+        
+        # Retrieval code if provided
+        if retrieval_code:
+            story.append(Spacer(1, 12))
+            code_text = f"""
+            <b>Re-print Code:</b> {retrieval_code}<br/>
+            <font size="8">Keep this code safe to reprint your kit anytime!</font>
+            """
+            story.append(Paragraph(code_text, self.styles['Normal']))
         
         return story
     
@@ -175,39 +206,77 @@ class PDFGenerator:
         return story
     
     def _create_instructions(self) -> List:
-        """Create assembly instructions."""
+        """Create assembly instructions with quick start guide."""
         story = []
         
         story.append(Paragraph("Assembly Instructions", self.styles['SectionHeader']))
         
-        instructions = f"""
-        <b>Getting Started:</b><br/><br/>
+        # Quick Start section
+        story.append(Paragraph("🚀 Quick Start (New to paint-by-numbers?)", 
+                           self.styles['Heading2']))
+        story.append(Spacer(1, 6))
         
-        1. <b>Prepare Your Canvas:</b><br/>
-           • Ensure your canvas is clean and flat<br/>
-           • Organize your drills/paints by color using the legend<br/>
-           • Set up your workspace in a well-lit area<br/><br/>
+        quick_start = """
+        <b>START HERE → Follow these 4 simple steps:</b><br/><br/>
         
-        2. <b>Reading the Pattern:</b><br/>
-           • Each symbol corresponds to a specific color<br/>
-           • Work from top to bottom, left to right<br/>
-           • Use the color legend as your reference guide<br/><br/>
+        1️⃣ <b>Organize Colors:</b> Sort your drills/paints by the numbers in the legend<br/>
+        2️⃣ <b>Find Symbol #1:</b> Look for the first symbol in the top-left corner<br/>
+        3️⃣ <b>Match & Apply:</b> Find the matching color and place it on the canvas<br/>
+        4️⃣ <b>Continue Pattern:</b> Work in sections, following the symbol grid<br/><br/>
         
-        3. <b>Assembly Tips:</b><br/>
-           • Apply a small section at a time for best results<br/>
-           • Keep drills/paints sealed when not in use<br/>
-           • Use the provided quantities (includes {int(self.config.output.spare_percentage*100)}% spare)<br/><br/>
-        
-        4. <b>Completion Time:</b><br/>
-           • Estimated time: {self._estimate_completion_time()}<br/>
-           • Take breaks to avoid eye strain<br/>
-           • Enjoy the creative process!<br/><br/>
-        
-        <b>Need Help?</b><br/>
-        Contact us if you have questions about your kit.
+        <b>💡 Pro Tip:</b> Complete one color at a time for faster results!
         """
         
-        story.append(Paragraph(instructions, self.styles['Normal']))
+        story.append(Paragraph(quick_start, self.styles['Normal']))
+        story.append(Spacer(1, 12))
+        
+        # Detailed instructions
+        story.append(Paragraph("📖 Detailed Guide", self.styles['Heading2']))
+        story.append(Spacer(1, 6))
+        
+        detailed = """
+        <b>🎨 Preparation:</b><br/>
+        • Canvas: Ensure it's clean, flat, and well-lit<br/>
+        • Workspace: Comfortable chair, good lighting, organized colors<br/>
+        • Tools: Applicator pen, wax, and tray (for diamond painting)<br/><br/>
+        
+        <b>🔍 Reading Your Pattern:</b><br/>
+        • Symbols: Each unique shape = one specific color<br/>
+        • Direction: Work top-to-bottom, left-to-right<br/>
+        • Reference: Keep the legend handy while working<br/>
+        • Grid lines: Bold 10×10 sections help track progress<br/><br/>
+        
+        <b>✨ Assembly Techniques:</b><br/>
+        • Small sections: Work in 2×2 inch areas for best control<br/>
+        • Color blocking: Complete one color before moving to the next<br/>
+        • Quality check: Ensure all symbols are covered before moving on<br/>
+        • Storage: Keep unused drills sealed to prevent mixing<br/><br/>
+        
+        <b>⏱️ Time Management:</b><br/>
+        • Estimated time: {estimated_time}<br/>
+        • Break schedule: Rest every 30-45 minutes<br/>
+        • Progress: Use 10×10 grid sections to track completion<br/><br/>
+        
+        <b>🏁 Finishing Touches:</b><br/>
+        • Inspection: Check for any missed symbols<br/>
+        • Pressing: Gently press finished sections to secure<br/>
+        • Sealing: Optional protective spray for longevity<br/>
+        • Display: Frame or mount your completed artwork!
+        """.format(estimated_time=self._estimate_completion_time())
+        
+        story.append(Paragraph(detailed, self.styles['Normal']))
+        story.append(Spacer(1, 12))
+        
+        # Help section
+        help_text = """
+        <b>❓ Need Help?</b><br/>
+        • Lost your code? Check your email or contact support<br/>
+        • Color questions? Reference the legend on page 2<br/>
+        • Pattern issues? Use the grid lines to stay on track<br/>
+        • Tips for beginners: Start with larger areas first
+        """
+        
+        story.append(Paragraph(help_text, self.styles['Normal']))
         story.append(PageBreak())
         
         return story
@@ -306,7 +375,7 @@ class PDFGenerator:
         return story
     
     def _create_pattern_image(self, symbol_grid: np.ndarray, drill_size_px: float) -> Image.Image:
-        """Create pattern image with symbols."""
+        """Create pattern image with symbols and grid lines."""
         h, w = symbol_grid.shape
         img_width = int(w * drill_size_px)
         img_height = int(h * drill_size_px)
@@ -314,7 +383,7 @@ class PDFGenerator:
         # Create white background
         img = Image.new('RGB', (img_width, img_height), (255, 255, 255))
         
-        # Draw symbols (simplified - in production would use proper font rendering)
+        # Draw symbols and grid lines
         from PIL import ImageDraw, ImageFont
         
         try:
@@ -324,15 +393,45 @@ class PDFGenerator:
         
         draw = ImageDraw.Draw(img)
         
+        # Draw 10×10 grid lines for easier tracking
         for y in range(h):
             for x in range(w):
+                # Draw cell boundaries (light gray)
+                cell_x = int(x * drill_size_px)
+                cell_y = int(y * drill_size_px)
+                
+                draw.rectangle(
+                    [cell_x, cell_y, cell_x + int(drill_size_px), cell_y + int(drill_size_px)],
+                    outline=(220, 220, 220), width=1
+                )
+                
+                # Draw bold grid lines every 10 cells
+                if x % 10 == 0:
+                    draw.line([cell_x, cell_y, cell_x, cell_y + int(drill_size_px)], 
+                            fill=(150, 150, 150), width=2)
+                if y % 10 == 0:
+                    draw.line([cell_x, cell_y, cell_x + int(drill_size_px), cell_y], 
+                            fill=(150, 150, 150), width=2)
+                
+                # Draw symbol
                 symbol = symbol_grid[y, x]
                 if symbol:
                     pos_x = int(x * drill_size_px + drill_size_px / 2)
                     pos_y = int(y * drill_size_px + drill_size_px / 2)
                     
-                    # Draw symbol
+                    # Draw symbol with better contrast
                     draw.text((pos_x, pos_y), symbol, fill=(0, 0, 0), font=font, anchor='mm')
+        
+        # Add START HERE marker for first page
+        if h <= 160 and w <= 120:  # Only add for single page patterns
+            start_x = int(drill_size_px * 2)
+            start_y = int(drill_size_px * 2)
+            
+            # Draw attention box
+            draw.rectangle([start_x - 15, start_y - 10, start_x + 60, start_y + 20], 
+                        outline=(255, 0, 0), width=3)
+            draw.text((start_x + 22, start_y + 5), "START HERE", 
+                    fill=(255, 0, 0), font=font, anchor='mm')
         
         return img
     

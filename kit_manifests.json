@@ -1,0 +1,107 @@
+{
+  "STCV9DBK": {
+    "retrieval_code": "STCV9DBK",
+    "timestamp": "2025-11-11T20:56:00.221680",
+    "input_image": "pixel.jpg",
+    "output_pdf": "",
+    "style_preset": "vintage",
+    "processing_params": {
+      "dpi": 300,
+      "color_space": "Lab",
+      "quantization_method": "kmeans",
+      "dithering": true,
+      "seed": 42,
+      "style_adjustments": {
+        "contrast_enhancement": 1.0,
+        "brightness_adjustment": -0.05,
+        "saturation_boost": -0.1
+      }
+    },
+    "color_counts": {
+      "Black": 5051,
+      "Cream": 13372,
+      "Brown": 1770,
+      "Burgundy": 19,
+      "Forest Green": 1370,
+      "Navy": 0,
+      "Gold": 494
+    },
+    "canvas_config": {
+      "width_cm": 30,
+      "height_cm": 40,
+      "drill_size_mm": 2.5,
+      "aspect_ratio": 0.75
+    },
+    "kit_hash": "5958fbda4bab46439e1c7ee03248402d64984fc8d81ede24d1cf5ea5bf204e4e"
+  },
+  "ZJ5B34XM": {
+    "retrieval_code": "ZJ5B34XM",
+    "timestamp": "2025-11-11T20:56:44.981395",
+    "input_image": "pixel.jpg",
+    "output_pdf": "pixel_vintage_kit.pdf",
+    "style_preset": "vintage",
+    "processing_params": {
+      "dpi": 300,
+      "color_space": "Lab",
+      "quantization_method": "kmeans",
+      "dithering": true,
+      "seed": 42,
+      "style_adjustments": {
+        "contrast_enhancement": 1.0,
+        "brightness_adjustment": -0.05,
+        "saturation_boost": -0.1
+      }
+    },
+    "color_counts": {
+      "Black": 5051,
+      "Cream": 13372,
+      "Brown": 1770,
+      "Burgundy": 19,
+      "Forest Green": 1370,
+      "Navy": 0,
+      "Gold": 494
+    },
+    "canvas_config": {
+      "width_cm": 30,
+      "height_cm": 40,
+      "drill_size_mm": 2.5,
+      "aspect_ratio": 0.75
+    },
+    "kit_hash": "8657cf5a2d3b8c5def3f65890f4a8170d39cc362dc1942bee4fd84ed3f8d44a4"
+  },
+  "VHYZDUCH": {
+    "retrieval_code": "VHYZDUCH",
+    "timestamp": "2025-11-11T20:57:04.916313",
+    "input_image": "pixel.jpg",
+    "output_pdf": "pixel_popart_kit.pdf",
+    "style_preset": "popart",
+    "processing_params": {
+      "dpi": 300,
+      "color_space": "Lab",
+      "quantization_method": "kmeans",
+      "dithering": true,
+      "seed": 42,
+      "style_adjustments": {
+        "contrast_enhancement": 1.3,
+        "brightness_adjustment": 0.1,
+        "saturation_boost": 0.2
+      }
+    },
+    "color_counts": {
+      "Black": 4230,
+      "White": 13990,
+      "Hot Pink": 0,
+      "Electric Blue": 2631,
+      "Bright Yellow": 0,
+      "Lime Green": 0,
+      "Orange": 1227
+    },
+    "canvas_config": {
+      "width_cm": 30,
+      "height_cm": 40,
+      "drill_size_mm": 2.5,
+      "aspect_ratio": 0.75
+    },
+    "kit_hash": "87da878b1641f0ba96b449477f9572450de7cba2e092cf4bbe0593dc8ed856b9"
+  }
+}
