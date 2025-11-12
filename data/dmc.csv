@@ -1,6 +1,22 @@
 dmc,name,r,g,b
 310,Black,0,0,0
-Blanc,White,255,255,255
+B5200,White,255,255,255
+321,Red,255,0,0
+444,Royal Blue,65,105,225
+700,Bright Green,0,255,0
+797,Orange,255,165,0
+738,Beige,245,245,220
+3371,Dark Brown,101,67,33
+3865,Cream,255,253,208
+801,Coffee Brown,111,78,55
+613,Olive Green,85,107,47
+3033,Mustard,255,215,0
+372,Light Brown,210,180,140
+3790,Dark Gray,105,105,105
+666,Christmas Red,220,20,60
+915,Hot Orange,255,69,0
+996,Electric Blue,0,0,255
+  +++++++ REPLACE
 666,Christmas Red (Light),220,20,60
 666,Christmas Red (Medium),208,24,48
 666,Christmas Red (Dark),196,28,36

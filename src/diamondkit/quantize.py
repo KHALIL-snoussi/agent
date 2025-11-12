@@ -32,13 +32,13 @@ class ColorQuantizer:
         """
         print(f"Quantizing to {self.config.palette.max_colors} DMC colors...")
         
-        # Ultra-aggressive downsampling for lightning-fast processing
+        # Balanced downsampling for quality and speed
         total_pixels = image_lab.shape[0] * image_lab.shape[1]
         
-        # Target exactly 5k pixels for k-means (ultra-fast!)
-        target_pixels = 5000  # Reduced from 10000
+        # Target 15k pixels for better quality k-means
+        target_pixels = 15000  # Increased for better quality
         downsample_factor = max(1, int(np.sqrt(total_pixels / target_pixels)))
-        downsample_factor = min(downsample_factor, 16)  # Increased cap to 16x
+        downsample_factor = min(downsample_factor, 8)  # Reduced cap for better quality
         
         if downsample_factor > 1:
             print(f"ULTRA-aggressive downsampling by factor of {downsample_factor} for speed...")
@@ -96,15 +96,15 @@ class ColorQuantizer:
     def _run_kmeans(self, pixels: np.ndarray, k: int) -> np.ndarray:
         """Run k-means clustering on Lab pixels."""
         # Use k-means++ initialization for better results
-        # Ultra-optimized for maximum speed
+        # Balanced for quality and speed
         kmeans = KMeans(
             n_clusters=k,
             init='k-means++',
-            n_init=1,  # Minimal for speed (was 3)
-            max_iter=50,  # Minimal for speed (was 100)
+            n_init=3,  # Increased for better convergence
+            max_iter=100,  # Increased for better quality
             random_state=self.config.processing.seed,
             algorithm='elkan',
-            tol=1e-3   # Even looser tolerance for faster convergence
+            tol=1e-4   # Tighter tolerance for better quality
         )
         
         print(f"  K-means on {len(pixels):,} pixels for {k} colors...")

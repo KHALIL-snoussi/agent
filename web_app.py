@@ -1,6 +1,6 @@
 """
-Simple Web Application for Diamond Painting Kit Generator
-Provides a clean UI for uploading images and generating kits
+Commercial Diamond Painting Kit Generator - Web Interface
+Provides a clean UI for uploading images and generating commercial-grade kits
 """
 
 import os
@@ -15,14 +15,9 @@ from typing import Dict, Any
 sys.path.insert(0, 'src')
 
 try:
-    from diamondkit.config import Config
-    from diamondkit.image_io import ImageLoader
-    from diamondkit.dmc import get_dmc_palette
-    from diamondkit.quantize import ColorQuantizer
-    from diamondkit.dither import DitherEngine
-    from diamondkit.grid import CanvasGrid
-    from diamondkit.preview import PreviewGenerator
-    from diamondkit.export import ExportManager
+    from diamondkit.kit_generator import generate_diamond_kit, get_available_styles
+    from diamondkit.fixed_palettes import get_style_info, get_all_styles_info
+    from diamondkit.print_math import get_print_math_engine, PrintSpecs
 except ImportError as e:
     print(f"Import error: {e}")
     print("Please install dependencies: pip install -r requirements.txt")
@@ -86,90 +81,65 @@ def get_image_info(image_path: str) -> Dict[str, Any]:
     except Exception as e:
         return {'error': str(e)}
 
-def generate_kit_from_image(image_path: str, config_overrides: Dict[str, Any]) -> Dict[str, Any]:
-    """Generate diamond painting kit from image."""
+def generate_commercial_kit(image_path: str, style_name: str, config_overrides: Dict[str, Any]) -> Dict[str, Any]:
+    """Generate commercial diamond painting kit from image."""
     try:
-        # Create configuration
-        config = Config()
-        
-        # Apply overrides
-        for key, value in config_overrides.items():
-            if hasattr(config, key):
-                setattr(config, key, value)
-            elif hasattr(config.canvas, key):
-                setattr(config.canvas, key, value)
-            elif hasattr(config.palette, key):
-                setattr(config.palette, key, value)
-            elif hasattr(config.dither, key):
-                setattr(config.dither, key, value)
-            elif hasattr(config.export, key):
-                setattr(config.export, key, value)
-        
-        # Set input
-        config.input = image_path
+        print("🎨 Starting commercial diamond painting kit generation...")
         
         # Create output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        config.output_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"kit_{timestamp}")
-        os.makedirs(config.output_dir, exist_ok=True)
+        output_dir = os.path.join(app.config['UPLOAD_FOLDER'], f"kit_{timestamp}")
+        os.makedirs(output_dir, exist_ok=True)
         
-        # Initialize components
-        dmc_palette = get_dmc_palette("data/dmc.csv")
-        image_loader = ImageLoader(config)
-        quantizer = ColorQuantizer(config, dmc_palette)
-        dither_engine = DitherEngine(config)
+        # Set commercial-grade defaults with quality improvements
+        dpi = int(config_overrides.get('dpi', 600))
+        margin_mm = float(config_overrides.get('margin_mm', 12.0))
+        cell_size_mm = float(config_overrides.get('cell_size_mm', 2.5))  # Smaller cells for better detail
         
-        print("🎨 Starting diamond painting kit generation...")
+        # Generate kit using commercial system
+        result = generate_diamond_kit(
+            image_path=image_path,
+            style_name=style_name,
+            output_dir=output_dir,
+            dpi=dpi,
+            margin_mm=margin_mm,
+            cell_size_mm=cell_size_mm
+        )
         
-        # Load and process image
-        print("📸 Loading and preprocessing image...")
-        image_lab, metadata = image_loader.load_image(image_path)
+        if result and 'metadata' in result:
+            metadata = result['metadata']
+            grid_specs = result['grid_specs']
+            quality_report = result['quality_report']
+            
+            # Return web-friendly results
+            return {
+                'success': True,
+                'output_dir': output_dir,
+                'style': style_name,
+                'grid_size': f"{grid_specs.cols}×{grid_specs.rows}",
+                'total_drills': grid_specs.total_cells,
+                'total_pages': metadata['print_specifications']['total_pages'],
+                'quality': quality_report['summary']['overall_quality'],
+                'ssim_score': quality_report['summary']['ssim_score'],
+                'delta_e_mean': quality_report['summary']['delta_e_mean'],
+                'delta_e_max': quality_report['summary']['delta_e_max'],
+                'preview_path': result['outputs']['original_preview'],
+                'quantized_path': result['outputs']['quantized_preview'],
+                'pdf_path': result['outputs']['pdf_kit'],
+                'csv_path': result['outputs']['csv_inventory'],
+                'json_path': result['outputs']['json_metadata'],
+                'style_previews': {
+                    'original': result['outputs'].get('preview_original'),
+                    'vintage': result['outputs'].get('preview_vintage'),
+                    'popart': result['outputs'].get('preview_popart')
+                },
+                'palette_info': metadata['palette_info'],
+                'warnings': quality_report['quality_gates']['warnings'],
+                'recommendations': quality_report['quality_gates']['auto_fixes']
+            }
         
-        # Quantize colors
-        print("🎨 Optimizing color palette...")
-        quantized_lab, dmc_colors = quantizer.quantize_image(image_lab)
-        
-        # Apply dithering
-        print("✨ Applying dithering for smooth gradients...")
-        dithered_lab = dither_engine.apply_dithering(image_lab, quantized_lab)
-        
-        # Create grid
-        print("📐 Creating diamond placement grid...")
-        canvas_grid = CanvasGrid(config, dmc_colors)
-        grid_data = canvas_grid.create_grid(dithered_lab)
-        
-        # Generate preview
-        print("👁️ Generating preview image...")
-        preview_generator = PreviewGenerator(config)
-        preview_image = preview_generator.create_preview(dithered_lab, dmc_colors, canvas_grid)
-        
-        # Export files
-        print("📄 Creating printable PDF and materials...")
-        export_manager = ExportManager(config)
-        export_manager.export_complete_kit(canvas_grid, preview_image, metadata)
-        
-        print("✅ Diamond painting kit generation complete!")
-        
-        # Return results
-        return {
-            'success': True,
-            'output_dir': config.output_dir,
-            'colors_used': len(dmc_colors),
-            'grid_size': f"{canvas_grid.cells_w}×{canvas_grid.cells_h}",
-            'total_drills': canvas_grid.cells_w * canvas_grid.cells_h,
-            'preview_path': os.path.join(config.output_dir, 'preview.jpg'),
-            'pdf_path': os.path.join(config.output_dir, 'diamond_kit.pdf'),
-            'csv_path': os.path.join(config.output_dir, 'diamond_kit_legend.csv'),
-            'json_path': os.path.join(config.output_dir, 'diamond_kit_manifest.json'),
-            'dmc_colors': [
-                {
-                    'code': color.dmc_code,
-                    'name': color.name,
-                    'rgb': color.rgb,
-                    'hex': color.hex
-                } for color in dmc_colors
-            ]
-        }
+        else:
+            return {'success': False, 'error': 'No result returned from kit generator'}
         
     except Exception as e:
         return {'success': False, 'error': str(e)}
@@ -177,18 +147,33 @@ def generate_kit_from_image(image_path: str, config_overrides: Dict[str, Any]) -
 @app.route('/')
 def index():
     """Main page with upload form."""
-    return render_template('index.html')
+    # Get available styles
+    styles = get_available_styles()
+    style_info = {}
+    for style in styles:
+        style_info[style] = get_style_info(style)
+    
+    return render_template('index.html', styles=style_info)
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
     """Handle file upload and processing."""
     try:
+        print(f"DEBUG: Request method: {request.method}")
+        print(f"DEBUG: Request files: {list(request.files.keys())}")
+        print(f"DEBUG: Request form: {list(request.form.keys())}")
+        
         if 'file' not in request.files:
+            print("DEBUG: No 'file' in request.files")
             flash('No file selected')
             return redirect(url_for('index'))
         
         file = request.files['file']
+        print(f"DEBUG: File object: {file}")
+        print(f"DEBUG: File filename: {file.filename}")
+        
         if file.filename == '':
+            print("DEBUG: Empty filename")
             flash('No file selected')
             return redirect(url_for('index'))
         
@@ -199,22 +184,43 @@ def upload_file():
             return redirect(url_for('index'))
         
         # Get configuration from form
+        style_name = request.form.get('style', 'ORIGINAL')
         config_overrides = {
-            'canvas.width_cm': float(request.form.get('canvas_width', 30.0)),
-            'canvas.height_cm': float(request.form.get('canvas_height', 40.0)),
-            'canvas.drill_shape': request.form.get('drill_shape', 'square'),
-            'palette.max_colors': int(request.form.get('max_colors', 50)),
-            'dither.mode': request.form.get('dither_mode', 'ordered'),
-            'dither.strength': float(request.form.get('dither_strength', 0.35)),
-            'export.page': request.form.get('page_size', 'A4'),
-            'export.spare_ratio': float(request.form.get('spare_ratio', 0.10)),
-            'export.bag_size': int(request.form.get('bag_size', 200))
+            'dpi': int(request.form.get('dpi', 600)),
+            'margin_mm': float(request.form.get('margin_mm', 12.0)),
+            'cell_size_mm': float(request.form.get('cell_size_mm', 2.8))
         }
         
-        # Generate kit
-        result = generate_kit_from_image(image_path, config_overrides)
+        # Generate commercial kit
+        result = generate_commercial_kit(image_path, style_name, config_overrides)
         
         if result['success']:
+            # Load color usage from JSON metadata file
+            color_usage = {}
+            try:
+                with open(result['json_path'], 'r') as f:
+                    json_data = json.load(f)
+                    color_usage = json_data.get('color_usage', {})
+            except Exception as e:
+                print(f"Warning: Could not load color usage from JSON: {e}")
+            
+            # Add DMC colors to the result
+            result['dmc_colors'] = [
+                {
+                    'code': dmc_code,
+                    'name': dmc_code,  # Will be displayed as DMC code
+                    'hex': '#' + str(hash(dmc_code) % 0xFFFFFF).zfill(6),  # Generate consistent color
+                    'count': color_usage.get(dmc_code, 0)
+                } for dmc_code in result['palette_info']['dmc_codes']
+            ]
+            
+            # Extract filenames from paths
+            result['pdf_filename'] = os.path.basename(result['pdf_path'])
+            result['csv_filename'] = os.path.basename(result['csv_path'])
+            result['json_filename'] = os.path.basename(result['json_path'])
+            result['preview_filename'] = os.path.basename(result['preview_path'])
+            result['quantized_filename'] = os.path.basename(result['quantized_path'])
+            
             # Store result in session
             session_data = {
                 'image_info': get_image_info(image_path),
@@ -223,7 +229,10 @@ def upload_file():
             }
             return render_template('results.html', **session_data)
         else:
-            flash(f"Error generating kit: {result['error']}")
+            error_msg = result.get('error', 'Unknown error occurred')
+            print(f"DEBUG: Kit generation failed: {error_msg}")
+            print(f"DEBUG: Result keys: {list(result.keys()) if result else 'None'}")
+            flash(f"Error generating kit: {error_msg}")
             return redirect(url_for('index'))
     
     except RequestEntityTooLarge:
@@ -258,12 +267,24 @@ def serve_preview(filename):
     except Exception as e:
         return f"Error: {str(e)}", 500
 
-@app.route('/api/image_info')
-def api_image_info():
-    """Get image information via API."""
+@app.route('/api/styles')
+def api_styles():
+    """Get available styles via API."""
     try:
-        # This would need the actual image data from upload
-        return jsonify({'error': 'Not implemented'})
+        styles = get_available_styles()
+        style_info = {}
+        for style in styles:
+            style_info[style] = get_style_info(style)
+        return jsonify(style_info)
+    except Exception as e:
+        return jsonify({'error': str(e)})
+
+@app.route('/api/style/<style_name>')
+def api_style_info(style_name):
+    """Get specific style information via API."""
+    try:
+        info = get_style_info(style_name)
+        return jsonify(info)
     except Exception as e:
         return jsonify({'error': str(e)})
 
@@ -274,11 +295,11 @@ def too_large(e):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    print("🎨 Diamond Painting Kit Generator - Web Interface")
-    print("=" * 50)
+    print("🎨 Commercial Diamond Painting Kit Generator - Web Interface")
+    print("=" * 60)
     print("Starting web server...")
     print("Open your browser and go to: http://localhost:5000")
-    print("=" * 50)
+    print("=" * 60)
     
     # Create templates directory if it doesn't exist
     os.makedirs('templates', exist_ok=True)

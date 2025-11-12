@@ -254,8 +254,8 @@ class ImageLoader:
                 
                 # Calculate statistics
                 img_array = np.array(rgb_img)
-                info['mean_color'] = tuple(np.mean(img_array, axis=(0, 1)).astype(int))
-                info['std_color'] = tuple(np.std(img_array, axis=(0, 1)).astype(int))
+                info['mean_color'] = tuple(int(x) for x in np.mean(img_array, axis=(0, 1)))
+                info['std_color'] = tuple(int(x) for x in np.std(img_array, axis=(0, 1)))
                 
                 # Aspect ratio
                 w, h = rgb_img.size

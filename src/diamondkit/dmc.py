@@ -171,22 +171,59 @@ class DMCPalette:
         self.colors.clear()
         self.dmc_lookup.clear()
         
-        with open(csv_path, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                try:
-                    dmc_code = row['dmc'].strip()
-                    name = row.get('name', '').strip()
-                    r = int(row['r'])
-                    g = int(row['g'])
-                    b = int(row['b'])
-                    
-                    color = DMCColor(dmc_code, name, (r, g, b))
-                    self.colors.append(color)
-                    self.dmc_lookup[dmc_code] = color
-                    
-                except (ValueError, KeyError) as e:
-                    print(f"Warning: Skipping invalid DMC entry: {row} - {e}")
+        try:
+            with open(csv_path, 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        # Skip empty rows
+                        if not row or row.get('dmc') is None:
+                            continue
+                        
+                        dmc_code = row['dmc'].strip()
+                        name = row.get('name', '').strip() if row.get('name') else ''
+                        
+                        # Skip if RGB values are missing
+                        if row.get('r') is None or row.get('g') is None or row.get('b') is None:
+                            continue
+                        
+                        r = int(row['r'])
+                        g = int(row['g'])
+                        b = int(row['b'])
+                        
+                        color = DMCColor(dmc_code, name, (r, g, b))
+                        self.colors.append(color)
+                        self.dmc_lookup[dmc_code] = color
+                        
+                    except (ValueError, KeyError) as e:
+                        print(f"Warning: Skipping invalid DMC entry: {row} - {e}")
+        except UnicodeDecodeError:
+            # Fallback to latin-1 encoding if utf-8 fails
+            with open(csv_path, 'r', encoding='latin-1') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    try:
+                        # Skip empty rows
+                        if not row or row.get('dmc') is None:
+                            continue
+                        
+                        dmc_code = row['dmc'].strip()
+                        name = row.get('name', '').strip() if row.get('name') else ''
+                        
+                        # Skip if RGB values are missing
+                        if row.get('r') is None or row.get('g') is None or row.get('b') is None:
+                            continue
+                        
+                        r = int(row['r'])
+                        g = int(row['g'])
+                        b = int(row['b'])
+                        
+                        color = DMCColor(dmc_code, name, (r, g, b))
+                        self.colors.append(color)
+                        self.dmc_lookup[dmc_code] = color
+                        
+                    except (ValueError, KeyError) as e:
+                        print(f"Warning: Skipping invalid DMC entry: {row} - {e}")
         
         # Pre-compute Lab array for fast nearest neighbor search
         self._compute_lab_array()

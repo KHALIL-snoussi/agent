@@ -1,0 +1,68 @@
+{
+  "generation_info": {
+    "style": "VINTAGE",
+    "grid_hash": "d761c1ee5f449630",
+    "scale_factor": 0.05811763488509074,
+    "crop_applied": false
+  },
+  "grid_specifications": {
+    "dimensions": "114\u00d787",
+    "total_cells": 9918,
+    "cell_size_mm": 2.8,
+    "print_area_mm": [
+      319.2,
+      243.6
+    ]
+  },
+  "quality_assessment": {
+    "overall_quality": "NEEDS_IMPROVEMENT",
+    "ssim_score": 0.6099553379763571,
+    "delta_e_mean": 45.90479288153146,
+    "delta_e_max": 59.13968521999358,
+    "warnings": [
+      "Detail loss risk: SSIM 0.610 < 0.75",
+      "Color accuracy risk: \u0394E_max 59.1 > 12.0"
+    ],
+    "risks": [
+      "Loss of fine details in quantized result",
+      "Some colors may not accurately represent original"
+    ]
+  },
+  "palette_info": {
+    "style_name": "VINTAGE",
+    "total_colors": 7,
+    "dmc_codes": [
+      "3371",
+      "3865",
+      "801",
+      "613",
+      "3033",
+      "372",
+      "3790"
+    ],
+    "color_distribution": {
+      "3371": 7.511595079653157,
+      "3865": 3.6700947771728174,
+      "801": 4.103649929421254,
+      "372": 44.676346037507564,
+      "3790": 40.03831417624521
+    },
+    "rare_colors": []
+  },
+  "output_files": {
+    "original_preview": "original_preview.jpg",
+    "quantized_preview": "quantized_preview.jpg",
+    "preview_original": "preview_original.jpg",
+    "preview_vintage": "preview_vintage.jpg",
+    "preview_popart": "preview_popart.jpg",
+    "csv_inventory": "inventory.csv",
+    "json_metadata": "metadata.json",
+    "pdf_kit": "diamond_painting_kit.pdf"
+  },
+  "print_specifications": {
+    "paper_size": "A4",
+    "dpi": 600,
+    "margins_mm": 12.0,
+    "total_pages": 2
+  }
+}

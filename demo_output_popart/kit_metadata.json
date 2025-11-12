@@ -1,0 +1,73 @@
+{
+  "generation_info": {
+    "style": "POPART",
+    "grid_hash": "e73e1abd15d39720",
+    "scale_factor": 0.05811763488509074,
+    "crop_applied": false
+  },
+  "grid_specifications": {
+    "dimensions": "114\u00d787",
+    "total_cells": 9918,
+    "cell_size_mm": 2.8,
+    "print_area_mm": [
+      319.2,
+      243.6
+    ]
+  },
+  "quality_assessment": {
+    "overall_quality": "NEEDS_IMPROVEMENT",
+    "ssim_score": 0.2683232965976266,
+    "delta_e_mean": 45.491294490785805,
+    "delta_e_max": 60.56169413132106,
+    "warnings": [
+      "Detail loss risk: SSIM 0.268 < 0.75",
+      "Color accuracy risk: \u0394E_max 60.6 > 12.0",
+      "Rare colors detected: 996, 915 (each < 2%)"
+    ],
+    "risks": [
+      "Loss of fine details in quantized result",
+      "Some colors may not accurately represent original",
+      "Difficult color management during crafting"
+    ]
+  },
+  "palette_info": {
+    "style_name": "POPART",
+    "total_colors": 7,
+    "dmc_codes": [
+      "310",
+      "B5200",
+      "666",
+      "444",
+      "700",
+      "996",
+      "915"
+    ],
+    "color_distribution": {
+      "310": 58.691268400887274,
+      "B5200": 34.49284129864892,
+      "666": 6.0798548094373865,
+      "996": 0.01008267795926598,
+      "915": 0.7259528130671506
+    },
+    "rare_colors": [
+      "996",
+      "915"
+    ]
+  },
+  "output_files": {
+    "original_preview": "original_preview.jpg",
+    "quantized_preview": "quantized_preview.jpg",
+    "preview_original": "preview_original.jpg",
+    "preview_vintage": "preview_vintage.jpg",
+    "preview_popart": "preview_popart.jpg",
+    "csv_inventory": "inventory.csv",
+    "json_metadata": "metadata.json",
+    "pdf_kit": "diamond_painting_kit.pdf"
+  },
+  "print_specifications": {
+    "paper_size": "A4",
+    "dpi": 600,
+    "margins_mm": 12.0,
+    "total_pages": 2
+  }
+}

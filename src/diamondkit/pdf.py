@@ -366,6 +366,12 @@ class PDFGenerator:
         
         return content
     
+    def _draw_centered_text(self, pdf_canvas, text: str, x: float, y: float):
+        """Draw centered text at specified position."""
+        text_width = pdf_canvas.stringWidth(text, "Helvetica", 8)
+        centered_x = x - text_width / 2
+        pdf_canvas.drawString(centered_x, y, text)
+    
     def _add_page_header(self, pdf_canvas, title: str):
         """Add page header with title and page info."""
         pdf_canvas.setFont("Helvetica-Bold", 14)
@@ -477,9 +483,9 @@ class PDFGenerator:
             x_pos = start_x + x * self.cell_size_pt + self.cell_size_pt / 2
             
             # Top
-            pdf_canvas.drawCentredText(str(coord), x_pos, start_y + total_height + 5)
+            self._draw_centered_text(pdf_canvas, str(coord), x_pos, start_y + total_height + 5)
             # Bottom
-            pdf_canvas.drawCentredText(str(coord), x_pos, start_y - 5)
+            self._draw_centered_text(pdf_canvas, str(coord), x_pos, start_y - 5)
         
         # Y-axis labels (left and right)
         for y in range(0, tile_h, 10):  # Label every 10 cells
@@ -487,9 +493,9 @@ class PDFGenerator:
             y_pos = start_y + (tile_h - 1 - y) * self.cell_size_pt + self.cell_size_pt / 2
             
             # Left
-            pdf_canvas.drawCentredText(str(coord), start_x - 10, y_pos)
+            self._draw_centered_text(pdf_canvas, str(coord), start_x - 10, y_pos)
             # Right
-            pdf_canvas.drawCentredText(str(coord), start_x + total_width + 10, y_pos)
+            self._draw_centered_text(pdf_canvas, str(coord), start_x + total_width + 10, y_pos)
     
     def _get_difficulty_description(self, canvas_grid: CanvasGrid) -> str:
         """Get human-readable difficulty description."""

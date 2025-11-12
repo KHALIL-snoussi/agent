@@ -369,7 +369,7 @@
                 <div class="card-body">
                     <div class="stats-grid">
                         <div class="stat-item">
-                            <div class="stat-value">{{ kit_result.colors_used }}</div>
+                            <div class="stat-value">{{ kit_result.dmc_colors|length }}</div>
                             <div class="stat-label">DMC Colors</div>
                         </div>
                         <div class="stat-item">
@@ -390,20 +390,20 @@
                         <h4>Configuration Used</h4>
                         <div class="config-grid">
                             <div class="config-item">
-                                <span class="config-label">Canvas:</span>
-                                <span class="config-value">{{ config.canvas_width_cm }}×{{ config.canvas_height_cm }} cm</span>
+                                <span class="config-label">Style:</span>
+                                <span class="config-value">{{ kit_result.style }}</span>
                             </div>
                             <div class="config-item">
-                                <span class="config-label">Drill Shape:</span>
-                                <span class="config-value">{{ config.canvas_drill_shape }}</span>
+                                <span class="config-label">DPI:</span>
+                                <span class="config-value">{{ config.dpi }}</span>
                             </div>
                             <div class="config-item">
-                                <span class="config-label">Max Colors:</span>
-                                <span class="config-value">{{ config.palette_max_colors }}</span>
+                                <span class="config-label">Margins:</span>
+                                <span class="config-value">{{ config.margin_mm }}mm</span>
                             </div>
                             <div class="config-item">
-                                <span class="config-label">Dithering:</span>
-                                <span class="config-value">{{ config.dither_mode }}</span>
+                                <span class="config-label">Cell Size:</span>
+                                <span class="config-value">{{ config.cell_size_mm }}mm</span>
                             </div>
                         </div>
                     </div>
@@ -432,7 +432,7 @@
                 <h3>👁️ Preview</h3>
             </div>
             <div class="card-body preview-section">
-                <img src="{{ url_for('serve_preview', filename='preview.jpg') }}" 
+                <img src="{{ url_for('serve_preview', filename=kit_result.preview_filename) }}" 
                      alt="Diamond Painting Preview" 
                      class="preview-image"
                      onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI2Y4ZjlmYSIvPgogIDx0ZXh0IHg9IjUwJSIgeT0iNTAlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE4IiBmaWxsPSIjNmM3NTdkIj4KICAgIFByZXZpZXcgSW1hZ2UKICA8L3RleHQ+Cjwvc3ZnPg=='">
@@ -451,7 +451,7 @@
                     <div class="download-description">
                         Complete instruction booklet with pattern grid and assembly guide
                     </div>
-                    <a href="{{ url_for('download_file', filename='diamond_kit.pdf') }}" class="download-btn">
+                    <a href="{{ url_for('download_file', filename=kit_result.pdf_filename) }}" class="download-btn">
                         Download PDF
                     </a>
                 </div>
@@ -462,7 +462,7 @@
                     <div class="download-description">
                         CSV file with DMC color codes, drill counts, and bag organization
                     </div>
-                    <a href="{{ url_for('download_file', filename='diamond_kit_legend.csv') }}" class="download-btn">
+                    <a href="{{ url_for('download_file', filename=kit_result.csv_filename) }}" class="download-btn">
                         Download CSV
                     </a>
                 </div>
@@ -473,7 +473,7 @@
                     <div class="download-description">
                         High-resolution preview of your completed diamond painting
                     </div>
-                    <a href="{{ url_for('download_file', filename='preview.jpg') }}" class="download-btn">
+                    <a href="{{ url_for('download_file', filename=kit_result.preview_filename) }}" class="download-btn">
                         Download Image
                     </a>
                 </div>
@@ -484,7 +484,7 @@
                     <div class="download-description">
                         JSON file with all processing parameters and metadata
                     </div>
-                    <a href="{{ url_for('download_file', filename='diamond_kit_manifest.json') }}" class="download-btn">
+                    <a href="{{ url_for('download_file', filename=kit_result.json_filename) }}" class="download-btn">
                         Download JSON
                     </a>
                 </div>

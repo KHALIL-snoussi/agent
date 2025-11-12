@@ -44,7 +44,7 @@ class PaletteConfig:
     mode: Literal["dmc", "custom"] = "dmc"
     max_colors: int = 50
     preserve_skin_tones: bool = True
-    dmc_file: str = "../data/dmc.csv"
+    dmc_file: str = "data/dmc.csv"
 
 
 @dataclass
@@ -105,8 +105,13 @@ class Config:
             config.config_file = config_path
             return config
         
-        with open(config_path, 'r') as f:
-            data = yaml.safe_load(f) or {}
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                data = yaml.safe_load(f) or {}
+        except UnicodeDecodeError:
+            # Fallback to latin-1 encoding if utf-8 fails
+            with open(config_path, 'r', encoding='latin-1') as f:
+                data = yaml.safe_load(f) or {}
         
         # Create config with nested structures
         config = cls(

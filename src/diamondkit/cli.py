@@ -7,14 +7,14 @@ import sys
 import argparse
 from pathlib import Path
 
-from diamondkit.config import Config
-from diamondkit.image_io import ImageLoader
-from diamondkit.dmc import get_dmc_palette
-from diamondkit.quantize import ColorQuantizer
-from diamondkit.dither import DitherEngine
-from diamondkit.grid import CanvasGrid
-from diamondkit.preview import PreviewGenerator
-from diamondkit.export import ExportManager
+from .config import Config
+from .image_io import ImageLoader
+from .dmc import get_dmc_palette
+from .quantize import ColorQuantizer
+from .dither import DitherEngine
+from .grid import CanvasGrid
+from .preview import PreviewGenerator
+from .export import ExportManager
 
 
 def create_parser() -> argparse.ArgumentParser:

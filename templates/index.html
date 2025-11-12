@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Diamond Painting Kit Generator</title>
+    <title>Commercial Diamond Painting Kit Generator</title>
     <style>
         * {
             margin: 0;
@@ -86,20 +86,146 @@
             display: none;
         }
 
-        .config-section {
+        .style-section {
             padding: 40px;
             background: white;
+        }
+
+        .style-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .style-header h2 {
+            color: #495057;
+            margin-bottom: 10px;
+        }
+
+        .style-header p {
+            color: #6c757d;
+        }
+
+        .styles-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+
+        .style-card {
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            padding: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: #f8f9fa;
+        }
+
+        .style-card:hover {
+            border-color: #667eea;
+            transform: translateY(-3px);
+            box-shadow: 0 10px 25px rgba(102,126,234,0.15);
+        }
+
+        .style-card.selected {
+            border-color: #667eea;
+            background: linear-gradient(45deg, rgba(102,126,234,0.1), rgba(118,75,162,0.1));
+            box-shadow: 0 5px 15px rgba(102,126,234,0.2);
+        }
+
+        .style-card input[type="radio"] {
+            display: none;
+        }
+
+        .style-title {
+            font-size: 1.3em;
+            font-weight: bold;
+            color: #495057;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .style-title::before {
+            content: '🎨';
+            margin-right: 10px;
+            font-size: 1.2em;
+        }
+
+        .style-description {
+            color: #6c757d;
+            margin-bottom: 15px;
+            line-height: 1.5;
+        }
+
+        .style-palette {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            position: relative;
+        }
+
+        .color-swatch::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #333;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+
+        .color-swatch:hover::after {
+            opacity: 1;
+        }
+
+        .style-specs {
+            font-size: 0.9em;
+            color: #495057;
+            background: rgba(255,255,255,0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+
+        .config-section {
+            padding: 40px;
+            background: #f8f9fa;
+        }
+
+        .config-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .config-header h2 {
+            color: #495057;
+            margin-bottom: 10px;
         }
 
         .config-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 30px;
-            margin-top: 30px;
+            gap: 25px;
         }
 
         .config-group {
-            background: #f8f9fa;
+            background: white;
             padding: 20px;
             border-radius: 10px;
             border: 1px solid #e9ecef;
@@ -144,27 +270,10 @@
             box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
         }
 
-        .slider-container {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        input[type="range"] {
-            flex: 1;
-        }
-
-        .slider-value {
-            min-width: 50px;
-            text-align: center;
-            font-weight: bold;
-            color: #667eea;
-        }
-
         .submit-section {
             text-align: center;
             padding: 30px;
-            background: #f8f9fa;
+            background: white;
         }
 
         .submit-btn {
@@ -281,6 +390,17 @@
             100% { transform: rotate(360deg); }
         }
 
+        .commercial-badge {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+
         @media (max-width: 768px) {
             .container {
                 padding: 10px;
@@ -290,11 +410,11 @@
                 font-size: 2em;
             }
 
-            .upload-section, .config-section {
+            .upload-section, .style-section, .config-section {
                 padding: 20px;
             }
 
-            .config-grid {
+            .styles-grid, .config-grid {
                 grid-template-columns: 1fr;
                 gap: 20px;
             }
@@ -304,8 +424,9 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎨 Diamond Painting Kit Generator</h1>
-            <p>Transform your photos into professional diamond painting kits</p>
+            <h1>🎨 Commercial Diamond Painting Kit Generator</h1>
+            <p>Professional-grade kits with fixed 7-color DMC palettes</p>
+            <div class="commercial-badge">COMMERCIAL GRADE • FIXED PALETTES • A4 OPTIMIZED</div>
         </header>
 
         {% with messages = get_flashed_messages() %}
@@ -332,83 +453,83 @@
                     </div>
                 </div>
 
+                <div class="style-section">
+                    <div class="style-header">
+                        <h2>Choose Your Style</h2>
+                        <p>Each style uses a fixed 7-color DMC palette - no customization needed</p>
+                    </div>
+
+                    <div class="styles-grid">
+                        {% for style_name, style_info in styles.items() %}
+                        <div class="style-card" onclick="selectStyle('{{ style_name }}')">
+                            <input type="radio" name="style" value="{{ style_name }}" id="style_{{ style_name }}" {% if loop.first %}checked{% endif %}>
+                            <div class="style-title">{{ style_name }}</div>
+                            <div class="style-description">{{ style_info.description }}</div>
+                            <div class="style-palette">
+                                {% for color in style_info.colors[:7] %}
+                                <div class="color-swatch" 
+                                     style="background-color: {{ color.hex }};" 
+                                     data-tooltip="{{ color.dmc_code }}: {{ color.name }}">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            <div class="style-specs">
+                                <strong>{{ style_info.dmc_codes|length }} Fixed DMC Colors:</strong><br>
+                                {{ style_info.dmc_codes|join(', ') }}
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
                 <div class="config-section">
-                    <h2 style="text-align: center; margin-bottom: 10px; color: #495057;">
-                        Customize Your Kit
-                    </h2>
-                    <p style="text-align: center; color: #6c757d; margin-bottom: 30px;">
-                        Adjust the settings below to create your perfect diamond painting kit
-                    </p>
+                    <div class="config-header">
+                        <h2>Print Specifications</h2>
+                        <p>Professional A4 printing settings (all constraints automatically enforced)</p>
+                    </div>
 
                     <div class="config-grid">
                         <div class="config-group">
-                            <h3>Canvas Settings</h3>
+                            <h3>Print Quality</h3>
                             <div class="form-group">
-                                <label for="canvas_width">Width (cm)</label>
-                                <input type="number" id="canvas_width" name="canvas_width" value="30" min="10" max="100" step="0.5">
-                            </div>
-                            <div class="form-group">
-                                <label for="canvas_height">Height (cm)</label>
-                                <input type="number" id="canvas_height" name="canvas_height" value="40" min="10" max="100" step="0.5">
-                            </div>
-                            <div class="form-group">
-                                <label for="drill_shape">Drill Shape</label>
-                                <select id="drill_shape" name="drill_shape">
-                                    <option value="square">Square (2.5mm)</option>
-                                    <option value="round">Round (2.8mm)</option>
+                                <label for="dpi">Print DPI</label>
+                                <select id="dpi" name="dpi">
+                                    <option value="300">300 DPI (Standard)</option>
+                                    <option value="600" selected>600 DPI (High Quality)</option>
+                                    <option value="1200">1200 DPI (Ultra High)</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="config-group">
-                            <h3>Color Settings</h3>
+                            <h3>Paper Layout</h3>
                             <div class="form-group">
-                                <label for="max_colors">Maximum Colors</label>
-                                <div class="slider-container">
-                                    <input type="range" id="max_colors" name="max_colors" min="7" max="100" value="50" step="1">
-                                    <span class="slider-value" id="max_colors_value">50</span>
-                                </div>
+                                <label for="margin_mm">Page Margins (mm)</label>
+                                <select id="margin_mm" name="margin_mm">
+                                    <option value="10">10mm (Minimum)</option>
+                                    <option value="12" selected>12mm (Recommended)</option>
+                                    <option value="15">15mm (Maximum)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="cell_size_mm">Cell Size (mm)</label>
+                                <select id="cell_size_mm" name="cell_size_mm">
+                                    <option value="2.3">2.3mm (Small)</option>
+                                    <option value="2.5">2.5mm (Standard)</option>
+                                    <option value="2.8" selected>2.8mm (Recommended)</option>
+                                    <option value="3.0">3.0mm (Large)</option>
+                                </select>
                             </div>
                         </div>
 
                         <div class="config-group">
-                            <h3>Dithering</h3>
-                            <div class="form-group">
-                                <label for="dither_mode">Dithering Mode</label>
-                                <select id="dither_mode" name="dither_mode">
-                                    <option value="ordered">Ordered (Bayer)</option>
-                                    <option value="fs">Floyd-Steinberg</option>
-                                    <option value="none">None</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="dither_strength">Dithering Strength</label>
-                                <div class="slider-container">
-                                    <input type="range" id="dither_strength" name="dither_strength" min="0" max="1" value="0.35" step="0.05">
-                                    <span class="slider-value" id="dither_strength_value">35%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="config-group">
-                            <h3>Export Settings</h3>
-                            <div class="form-group">
-                                <label for="page_size">PDF Page Size</label>
-                                <select id="page_size" name="page_size">
-                                    <option value="A4">A4</option>
-                                    <option value="A3">A3</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label for="spare_ratio">Spare Drills</label>
-                                <div class="slider-container">
-                                    <input type="range" id="spare_ratio" name="spare_ratio" min="0" max="0.5" value="0.10" step="0.05">
-                                    <span class="slider-value" id="spare_ratio_value">10%</span>
-                                </div>
-                            </div>
-                            <div class="form-group">
-                                <label for="bag_size">Drills per Bag</label>
-                                <input type="number" id="bag_size" name="bag_size" value="200" min="50" max="500" step="50">
+                            <h3>System Constraints</h3>
+                            <div style="padding: 10px; background: #e3f2fd; border-radius: 8px; font-size: 0.9em;">
+                                <strong>✓ Fixed 7-Color Palettes</strong><br>
+                                <strong>✓ Maximum 10,000 Cells</strong><br>
+                                <strong>✓ A4 Paper Optimization</strong><br>
+                                <strong>✓ ΔE2000 Color Accuracy</strong><br>
+                                <strong>✓ Professional Quality Gates</strong>
                             </div>
                         </div>
                     </div>
@@ -417,39 +538,49 @@
                 <div class="submit-section">
                     <div class="loading" id="loading">
                         <div class="spinner"></div>
-                        <p>Generating your diamond painting kit...</p>
+                        <p>Generating commercial diamond painting kit...</p>
                         <p style="font-size: 0.9em; color: #6c757d;">This may take a minute or two</p>
                     </div>
                     <button type="submit" class="submit-btn" id="submitBtn">
-                        🎨 Generate Diamond Painting Kit
+                        🎨 Generate Commercial Kit
                     </button>
                 </div>
             </form>
 
             <div class="info-section">
                 <h3 style="text-align: center; margin-bottom: 20px; color: #495057;">
-                    What You'll Get
+                    Commercial-Grade Output
                 </h3>
                 <div class="info-grid">
                     <div class="info-item">
                         <div class="icon">📄</div>
-                        <h4>Printable PDF</h4>
-                        <p>Multi-page instruction booklet with pattern grid</p>
+                        <h4>A4 PDF Kit</h4>
+                        <p>Multi-page printable with symbols & instructions</p>
                     </div>
                     <div class="info-item">
                         <div class="icon">🎨</div>
-                        <h4>DMC Colors</h4>
-                        <p>Professional diamond painting color palette</p>
+                        <h4>Fixed DMC Colors</h4>
+                        <p>Exact 7-color professional palettes</p>
                     </div>
                     <div class="info-item">
                         <div class="icon">📋</div>
-                        <h4>Color Legend</h4>
-                        <p>CSV file with drill counts and bag organization</p>
+                        <h4>CSV Inventory</h4>
+                        <p>Drill counts, bag quantities, DMC codes</p>
                     </div>
                     <div class="info-item">
                         <div class="icon">👁️</div>
-                        <h4>Preview Image</h4>
-                        <p>Visual representation of your completed design</p>
+                        <h4>Style Previews</h4>
+                        <p>Original, Vintage, PopArt renderings</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="icon">📊</div>
+                        <h4>Quality Report</h4>
+                        <p>SSIM, ΔE metrics, recommendations</p>
+                    </div>
+                    <div class="info-item">
+                        <div class="icon">🔒</div>
+                        <h4>Fixed Constraints</h4>
+                        <p>10k cell cap, A4 optimization, invariance</p>
                     </div>
                 </div>
             </div>
@@ -457,6 +588,28 @@
     </div>
 
     <script>
+        // Style selection
+        function selectStyle(styleName) {
+            // Remove selected class from all cards
+            document.querySelectorAll('.style-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked card
+            event.currentTarget.classList.add('selected');
+            
+            // Check the corresponding radio button
+            document.getElementById('style_' + styleName).checked = true;
+        }
+
+        // Initialize first style as selected
+        document.addEventListener('DOMContentLoaded', function() {
+            const firstStyle = document.querySelector('.style-card input[type="radio"]:checked');
+            if (firstStyle) {
+                firstStyle.closest('.style-card').classList.add('selected');
+            }
+        });
+
         // File upload handling
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
@@ -496,8 +649,8 @@
             const isValid = file.type.startsWith('image/') && file.size <= 16 * 1024 * 1024;
             
             if (isValid) {
-                // Store the current file input
-                const currentFileInput = document.getElementById('fileInput');
+                // Store the file data globally
+                window.selectedFile = file;
                 
                 uploadArea.innerHTML = `
                     <div class="upload-icon">✅</div>
@@ -507,17 +660,12 @@
                     <input type="file" name="file" id="fileInput" accept="image/*" required style="position: absolute; left: -9999px; opacity: 0; height: 1px;">
                 `;
                 
-                // Get the new file input and copy the file
                 const newFileInput = document.getElementById('fileInput');
-                
-                // Create a DataTransfer object to set the file
                 const dataTransfer = new DataTransfer();
                 dataTransfer.items.add(file);
                 newFileInput.files = dataTransfer.files;
                 
-                // Re-attach event listeners
                 uploadArea.addEventListener('click', () => newFileInput.click());
-                
                 newFileInput.addEventListener('change', (e) => {
                     if (e.target.files.length > 0) {
                         updateUploadArea(e.target.files[0]);
@@ -527,19 +675,6 @@
                 alert('Please upload a valid image file under 16MB');
             }
         }
-
-        // Slider value updates
-        document.getElementById('max_colors').addEventListener('input', (e) => {
-            document.getElementById('max_colors_value').textContent = e.target.value;
-        });
-
-        document.getElementById('dither_strength').addEventListener('input', (e) => {
-            document.getElementById('dither_strength_value').textContent = Math.round(e.target.value * 100) + '%';
-        });
-
-        document.getElementById('spare_ratio').addEventListener('input', (e) => {
-            document.getElementById('spare_ratio_value').textContent = Math.round(e.target.value * 100) + '%';
-        });
 
         // Form submission
         uploadForm.addEventListener('submit', (e) => {
@@ -552,21 +687,6 @@
             submitBtn.style.display = 'none';
             loading.style.display = 'block';
         });
-
-        // Canvas aspect ratio helper
-        function updateCanvasRatio() {
-            const width = parseFloat(document.getElementById('canvas_width').value);
-            const height = parseFloat(document.getElementById('canvas_height').value);
-            const aspectRatio = (width / height).toFixed(2);
-            
-            if (aspectRatio >= 0.7 && aspectRatio <= 0.8) {
-                // Good for standard 30x40 diamond painting
-                console.log('Good aspect ratio for diamond painting');
-            }
-        }
-
-        document.getElementById('canvas_width').addEventListener('change', updateCanvasRatio);
-        document.getElementById('canvas_height').addEventListener('change', updateCanvasRatio);
     </script>
 </body>
 </html>

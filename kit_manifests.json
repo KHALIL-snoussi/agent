@@ -103,5 +103,36 @@
       "aspect_ratio": 0.75
     },
     "kit_hash": "87da878b1641f0ba96b449477f9572450de7cba2e092cf4bbe0593dc8ed856b9"
+  },
+  "SMH0C3RL": {
+    "retrieval_code": "SMH0C3RL",
+    "timestamp": "2025-11-12T22:14:44.856964",
+    "input_image": "demo_image.png",
+    "output_pdf": "demo_kit.pdf",
+    "style_preset": null,
+    "processing_params": {
+      "dpi": 300,
+      "color_space": "Lab",
+      "quantization_method": "kmeans",
+      "dithering": true,
+      "seed": 42,
+      "style_adjustments": null
+    },
+    "color_counts": {
+      "Black": 7854,
+      "White": 4376,
+      "Red": 3896,
+      "Blue": 0,
+      "Yellow": 0,
+      "Green": 5180,
+      "Purple": 771
+    },
+    "canvas_config": {
+      "width_cm": 30,
+      "height_cm": 40,
+      "drill_size_mm": 2.5,
+      "aspect_ratio": 0.75
+    },
+    "kit_hash": "7924af06cd41394513f88eb02a5d5056cff4a1281420964587f7edd3ffd0cb5f"
   }
 }
