@@ -1,38 +1,73 @@
-# Paint-by-Numbers / Diamond-Painting Generator Configuration
+# QBRIX Diamond Painting Kit Generator Configuration
 
-# Canvas settings
-canvas:
-  width_cm: 30  # Target canvas width in cm
-  height_cm: 40  # Target canvas height in cm
-  drill_size_mm: 2.5  # Size of each drill/dot in mm
-  # aspect_ratio is calculated automatically: 30/40 = 0.75
+# Print specifications (QBRIX standards)
+print_specs:
+  dpi: 600  # Print DPI (≥300 recommended, 600 for quality)
+  margin_mm: 12.0  # A4 page margins in mm (10-15mm range)
+  cell_size_mm: 2.8  # Drill/cell size in mm (2.3-3.0mm range)
+  paper_size: "A4"  # Always A4 landscape for QBRIX
 
-# Color palette settings
-palette:
-  mode: "dmc"  # Use DMC color palette
-  max_colors: 50  # Maximum number of colors to use
-  preserve_skin_tones: true  # Preserve skin tones in quantization
-  dmc_file: "data/dmc.csv"  # Path to DMC color database
+# QBRIX Fixed Palette Configuration
+fixed_palettes:
+  # Three locked styles with exactly 7 DMC colors each
+  # Order defines cluster_id 0-6 (never changes)
+  styles: ["ORIGINAL", "VINTAGE", "POPART"]
+  default_style: "ORIGINAL"
+  
+  # ORIGINAL (natural enhancement)
+  original_palette: ["310", "B5200", "321", "444", "700", "797", "738"]
+  
+  # VINTAGE (warm sepia/heritage)
+  vintage_palette: ["3371", "3865", "801", "613", "3033", "372", "3790"]
+  
+  # POPART (bold high-contrast)
+  popart_palette: ["310", "B5200", "666", "444", "700", "996", "915"]
 
-# Image processing settings
+# Grid constraints (QBRIX requirements)
+grid_constraints:
+  max_cells: 10000  # Hard cap on total cells
+  max_aspect_deviation: 0.02  # ±2% aspect ratio tolerance
+  overlap_cells: 2  # Cell overlap between tiles for assembly
+
+# Quality thresholds
+quality_thresholds:
+  max_deltaE: 12.0  # Color accuracy risk threshold
+  min_ssim: 0.75  # Detail loss risk threshold
+  min_color_percentage: 2.0  # Rare color warning threshold (%)
+  min_x_height_mm: 1.2  # Symbol legibility threshold
+  min_stroke_mm: 0.15  # Line thickness threshold
+
+# Color science settings
+color_science:
+  dmc_database: "data/dmc.csv"  # Canonical DMC color database
+  color_space: "Lab"  # Use Lab color space for ΔE2000
+  deltaE_method: "CIEDE2000"  # CIEDE2000 color difference
+  enable_smoothing: true  # Spatial smoothing on index map
+
+# Processing settings
 processing:
   seed: 42  # Random seed for reproducible results
-  color_space: "Lab"  # Use Lab color space for quantization
-  quantization_method: "kmeans"  # kmeans or median_cut
+  auto_crop: true  # Smart cropping to match grid aspect ratio
+  normalize_exposure: true  # Exposure/contrast normalization
 
-# Dithering settings
-dither:
-  mode: "ordered"  # none, ordered, or fs (Floyd-Steinberg)
-  strength: 0.35  # Dithering strength 0-1
-  auto_disable_flat: true  # Auto-disable for flat images
-  variance_threshold: 10.0  # Variance threshold for auto-disable
+# Output settings
+output:
+  bag_size: 200  # Drills per bag for inventory
+  spare_ratio: 0.15  # Extra drills percentage
+  preview_max_size: 1200  # Max preview image dimension
+  pdf_compression: true  # Compress PDF for file size
 
-# Export settings
-export:
-  page: "A4"  # A4 or A3
-  overlap_mm: 5.0  # Overlap between tiled pages in mm
-  margin_mm: 8.0  # Page margins in mm
-  spare_ratio: 0.10  # Spare drill ratio 0-1
-  bag_size: 200  # Drills per bag
-  pdf_dpi: 300  # Output DPI for PDF
-  preview_size: [1200, 1600]  # Preview image size in pixels
+# File naming
+naming:
+  pdf_name: "diamond_painting_kit.pdf"
+  csv_name: "inventory.csv"
+  json_name: "kit_metadata.json"
+  preview_prefix: "preview_"
+  original_preview: "original_preview.jpg"
+  quantized_preview: "quantized_preview.jpg"
+
+# Legacy compatibility (deprecated, kept for reference)
+legacy:
+  canvas_width_cm: 30
+  canvas_height_cm: 40
+  drill_size_mm_legacy: 2.5

@@ -86,8 +86,8 @@ def demo_generate_kit(image_path: str, style: str, output_dir: str,
         quality_assessment = metadata['quality_assessment']
         print(f"\nQuality Assessment:")
         print(f"  Overall Quality: {quality_assessment['overall_quality']}")
-        print(f"  ΔE2000 Mean: {metadata.get('deltaE_stats', {}).get('mean', 0):.2f}")
-        print(f"  ΔE2000 Max: {metadata['deltaE_stats']['max']:.2f}")
+        print(f"  ΔE2000 Mean: {metadata['quality_assessment'].get('delta_e_mean', 0):.2f}")
+        print(f"  ΔE2000 Max: {metadata['quality_assessment'].get('delta_e_max', 0):.2f}")
         print(f"  SSIM: {metadata['ssim']:.4f}")
         print(f"  Scale Factor: {metadata['scale_factor']:.3f}")
         
@@ -197,7 +197,7 @@ def demo_all_styles(image_path: str, base_output_dir: str):
                 
                 print(f"\n{style} Summary:")
                 print(f"  Grid: {grid_specs.cols}×{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
-                print(f"  ΔE Mean: {metadata['deltaE_stats']['mean']:.2f}")
+                print(f"  ΔE Mean: {metadata['quality_assessment'].get('delta_e_mean', 0):.2f}")
                 print(f"  SSIM: {metadata['ssim']:.3f}")
                 print(f"  Quality: {metadata['quality_assessment']['overall_quality']}")
                 

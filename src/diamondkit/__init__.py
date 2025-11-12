@@ -17,6 +17,7 @@ from .grid import CanvasGrid
 from .pdf import QBRIXPDFGenerator as PDFGenerator
 from .preview import PreviewGenerator
 from .export import ExportManager
+from . import cli
 
 __all__ = [
     "Config",
@@ -27,5 +28,6 @@ __all__ = [
     "CanvasGrid",
     "PDFGenerator",
     "PreviewGenerator",
-    "ExportManager"
+    "ExportManager",
+    "cli"
 ]
