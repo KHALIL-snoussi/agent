@@ -167,11 +167,16 @@ class QBRIXPDFGenerator:
         # Quality metrics
         content.append(Paragraph("Quality Assessment", heading_style))
         
+        deltaE_mean = metadata.get('deltaE_stats', {}).get('mean', 'N/A')
+        deltaE_max = metadata.get('deltaE_stats', {}).get('max', 'N/A')
+        ssim = metadata.get('ssim', 'N/A')
+        scale_factor = metadata.get('scale_factor', 1.0)
+        
         quality_text = f"""
-        <b>ΔE2000 Color Accuracy:</b> Mean: {metadata.get('deltaE_stats', {}).get('mean', 'N/A'):.1f}, 
-        Max: {metadata.get('deltaE_stats', {}).get('max', 'N/A'):.1f}<br/>
-        <b>Structural Similarity (SSIM):</b> {metadata.get('ssim', 'N/A'):.3f}<br/>
-        <b>Scale Factor:</b> {metadata.get('scale_factor', 1.0):.3f}
+        <b>ΔE2000 Color Accuracy:</b> Mean: {deltaE_mean}, 
+        Max: {deltaE_max}<br/>
+        <b>Structural Similarity (SSIM):</b> {ssim}<br/>
+        <b>Scale Factor:</b> {scale_factor}
         """
         
         content.append(Paragraph(quality_text, normal_style))
@@ -354,8 +359,15 @@ class QBRIXPDFGenerator:
                 self.grid_map = grid_map
                 self.tile = tile
                 self.pdf_gen = pdf_generator
+                # Use exact page dimensions to avoid overflow
                 self.width = pdf_generator.page_w - 2 * pdf_generator.margin_pt
                 self.height = pdf_generator.page_h - 2 * pdf_generator.margin_pt
+                
+            def wrap(self, availWidth, availHeight):
+                # Ensure we fit within available space
+                self.width = min(availWidth, self.width)
+                self.height = min(availHeight, self.height)
+                return (self.width, self.height)
             
             def draw(self):
                 canvas = self.canv
@@ -567,4 +579,6 @@ class QBRIXPDFGenerator:
         # Add label
         pdf_canvas.setFont("Helvetica", 7)
         pdf_canvas.setFillColor(black)
-        pdf_canvas.drawCentredText("Position", map_x + map_w/2, map_y + map_h + 3)
+        label_text = "Position"
+        text_width = pdf_canvas.stringWidth(label_text, "Helvetica", 7)
+        pdf_canvas.drawString(map_x + map_w/2 - text_width/2, map_y + map_h + 3, label_text)
