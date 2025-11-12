@@ -92,6 +92,22 @@ class DiamondKitGenerator:
             resized_for_ssim, quantized_rgb, grid_map, resized_lab_for_ssim
         )
         
+        # Run quality gates validation
+        from .quality_gates import run_quality_gates
+        quality_result = run_quality_gates(grid_map, self.print_specs, scale_factor)
+        
+        # Update quality metrics with quality gates results
+        quality_metrics.quality_warnings.extend(quality_result.warnings)
+        quality_metrics.quality_risks.extend(quality_result.errors)
+        
+        # Apply auto-fixes if available and needed
+        if quality_result.errors and quality_result.auto_fixes:
+            print("Applying quality gates auto-fixes:")
+            for fix in quality_result.auto_fixes:
+                print(f"  🔧 {fix}")
+            # Note: In production, you might implement actual auto-fixes here
+            # For now, we'll just report them in metadata
+        
         # Generate all output artifacts
         kit_outputs = self._generate_all_outputs(
             cropped_rgb, quantized_rgb, grid_map, quality_metrics, 
@@ -102,6 +118,21 @@ class DiamondKitGenerator:
         metadata = self._compile_comprehensive_metadata(
             grid_map, quality_metrics, scale_factor, crop_rect, kit_outputs
         )
+        
+        # Add quality gates results to metadata
+        metadata['quality_gates'] = {
+            'passed': quality_result.passed,
+            'warnings': quality_result.warnings,
+            'errors': quality_result.errors,
+            'auto_fixes': quality_result.auto_fixes,
+            'metrics': quality_result.metrics
+        }
+        
+        # Print quality gates report
+        from .quality_gates import QualityGates
+        gates = QualityGates(self.print_specs)
+        quality_report = gates.generate_quality_report(quality_result)
+        print("\n" + quality_report)
         
         # Save metadata
         metadata_path = os.path.join(output_dir, "kit_metadata.json")
@@ -418,44 +449,47 @@ class DiamondKitGenerator:
     
     def _generate_pdf_kit(self, grid_map, original_rgb: np.ndarray,
                          output_dir: str, style_name: str) -> str:
-        """Generate PDF kit using the diamondkit PDF generator."""
+        """Generate QBRIX PDF kit using the new PDF generator."""
         try:
-            from .pdf import PDFGenerator
-            from .config import Config
+            from .pdf import QBRIXPDFGenerator
             
-            # Create a basic config for PDF generation
-            config = Config()
-            config.export.page = "A4"
-            config.export.pdf_dpi = 300
-            
-            # Generate PDF
-            pdf_generator = PDFGenerator(config)
+            # Create QBRIX PDF generator with current print specs
+            pdf_generator = QBRIXPDFGenerator(self.print_specs)
             pdf_path = os.path.join(output_dir, "diamond_painting_kit.pdf")
             
-            # Create a simple metadata dict for PDF generation
+            # Create metadata for PDF generation
             metadata = {
                 'filename': os.path.basename(output_dir),
                 'grid_size': f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
                 'total_cells': grid_map.grid_specs.total_cells,
                 'colors_used': len(grid_map.palette_colors),
-                'style': style_name
+                'style': style_name,
+                'deltaE_stats': {},  # Will be filled by quality assessment
+                'ssim': 0.0,  # Will be filled by quality assessment
+                'scale_factor': 1.0,  # Will be filled by quality assessment
+                'warnings': []  # Will be filled by quality gates
             }
             
             # Generate quantized RGB from grid map
             quantized_rgb = self._grid_to_rgb_visualization(grid_map)
             
-            # Generate the PDF
-            pdf_generator.generate_complete_pdf(grid_map, quantized_rgb, metadata, pdf_path)
+            # Generate the QBRIX PDF
+            pdf_path = pdf_generator.generate_qbrix_pdf(
+                grid_map=grid_map,
+                preview_image=quantized_rgb,
+                metadata=metadata,
+                output_path=pdf_path
+            )
             
-            print(f"PDF generated successfully: {pdf_path}")
+            print(f"QBRIX PDF generated successfully: {pdf_path}")
             return pdf_path
             
         except Exception as e:
-            print(f"Warning: PDF generation failed: {e}")
+            print(f"Warning: QBRIX PDF generation failed: {e}")
             # Fallback to placeholder
             pdf_path = os.path.join(output_dir, "diamond_painting_kit.pdf")
             with open(pdf_path, 'w') as f:
-                f.write("PDF generation failed. Please check console for errors.")
+                f.write("QBRIX PDF generation failed. Please check console for errors.")
             return pdf_path
     
     def _compile_comprehensive_metadata(self, grid_map, quality_metrics,

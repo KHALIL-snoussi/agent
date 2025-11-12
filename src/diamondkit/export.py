@@ -12,7 +12,7 @@ import uuid
 
 from .config import Config
 from .grid import CanvasGrid
-from .pdf import PDFGenerator
+from .pdf import QBRIXPDFGenerator as PDFGenerator
 
 
 class ExportManager:

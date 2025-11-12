@@ -14,7 +14,7 @@ from .image_io import ImageLoader
 from .quantize import ColorQuantizer
 from .dither import DitherEngine
 from .grid import CanvasGrid
-from .pdf import PDFGenerator
+from .pdf import QBRIXPDFGenerator as PDFGenerator
 from .preview import PreviewGenerator
 from .export import ExportManager
 

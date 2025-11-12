@@ -1,5 +1,6 @@
 """
-Command-line interface for diamond painting kit generator.
+Command-line interface for QBRIX-quality diamond painting kit generator.
+Fixed 7-color DMC palettes with 10,000 cell constraints.
 """
 
 import os
@@ -7,145 +8,101 @@ import sys
 import argparse
 from pathlib import Path
 
-from .config import Config
-from .image_io import ImageLoader
-from .dmc import get_dmc_palette
-from .quantize import ColorQuantizer
-from .dither import DitherEngine
-from .grid import CanvasGrid
-from .preview import PreviewGenerator
-from .export import ExportManager
+from .kit_generator import generate_diamond_kit, get_available_styles, get_style_info
+from .print_math import PrintSpecs
 
 
 def create_parser() -> argparse.ArgumentParser:
-    """Create command-line argument parser."""
+    """Create command-line argument parser for fixed palette system."""
     parser = argparse.ArgumentParser(
-        description="Generate professional DMC diamond painting kits from images",
+        description="Generate QBRIX-quality diamond painting kits with fixed 7-color DMC palettes",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
+AVAILABLE STYLES:
+  ORIGINAL - Balanced palette with primary colors and neutrals
+  VINTAGE  - Muted sepia/cream range for traditional looks  
+  POPART   - Bold high-contrast colors for vibrant designs
+
 Examples:
-  # Generate a basic kit
-  python -m diamondkit.cli input.jpg output/
+  # Generate ORIGINAL style kit
+  python -m diamondkit.cli input.jpg output/ --style original
   
-  # Custom canvas size and colors
-  python -m diamondkit.cli input.jpg output/ --canvas-size 40x50 --max-colors 60
+  # Generate VINTAGE style kit with custom DPI
+  python -m diamondkit.cli input.jpg output/ --style vintage --dpi 600
   
-  # Use round drills and Floyd-Steinberg dithering
-  python -m diamondkit.cli input.jpg output/ --drill-shape round --dither fs
+  # Generate POPART style kit with custom cell size
+  python -m diamondkit.cli input.jpg output/ --style popart --cell-size-mm 2.5
   
-  # Use configuration file
-  python -m diamondkit.cli input.jpg output/ --config my_config.yaml
+  # List available styles and their palettes
+  python -m diamondkit.cli --list-styles
+  
+  # Get detailed info about a specific style
+  python -m diamondkit.cli --style-info vintage
         """
     )
     
-    # Input/Output
+    # Mode selection
     parser.add_argument(
         "input",
-        help="Input image file (JPG/PNG)"
+        nargs="?",
+        help="Input image file (JPG/PNG) - required for kit generation"
     )
     parser.add_argument(
         "output",
-        help="Output directory for generated kit"
+        nargs="?", 
+        help="Output directory for generated kit - required for kit generation"
     )
     
-    # Configuration
+    # Style selection (REQUIRED)
     parser.add_argument(
-        "--config", "-c",
+        "--style", "-s",
+        choices=["original", "vintage", "popart"],
+        help="Style choice: ORIGINAL, VINTAGE, or POPART (required for kit generation)"
+    )
+    
+    # Print specifications
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=600,
+        help="Print DPI (≥300 required, default: 600)"
+    )
+    parser.add_argument(
+        "--margin-mm",
+        type=float,
+        default=12.0,
+        help="Paper margins in mm (10-15mm range, default: 12)"
+    )
+    parser.add_argument(
+        "--cell-size-mm",
+        type=float,
+        default=2.8,
+        help="Cell size in mm (2.3-3.0mm range, default: 2.8)"
+    )
+    
+    # Cropping options
+    parser.add_argument(
+        "--crop",
         type=str,
-        help="YAML configuration file path"
-    )
-    
-    # Canvas settings
-    parser.add_argument(
-        "--canvas-size",
-        type=str,
-        default="30x40",
-        help="Canvas size in cm (default: 30x40)"
-    )
-    parser.add_argument(
-        "--drill-shape",
-        choices=["square", "round"],
-        default="square",
-        help="Drill shape (default: square)"
-    )
-    parser.add_argument(
-        "--drill-size-mm",
-        type=float,
-        help="Drill size in mm (default: 2.5 for square, 2.8 for round)"
-    )
-    
-    # Palette settings
-    parser.add_argument(
-        "--max-colors",
-        type=int,
-        default=50,
-        help="Maximum number of DMC colors (default: 50)"
-    )
-    parser.add_argument(
-        "--preserve-skin-tones",
-        action="store_true",
-        default=True,
-        help="Preserve skin tones in quantization"
-    )
-    parser.add_argument(
-        "--no-preserve-skin-tones",
-        action="store_false",
-        dest="preserve_skin_tones",
-        help="Disable skin tone preservation"
-    )
-    
-    # Dithering settings
-    parser.add_argument(
-        "--dither",
-        choices=["none", "ordered", "fs"],
-        default="ordered",
-        help="Dithering mode (default: ordered)"
-    )
-    parser.add_argument(
-        "--dither-strength",
-        type=float,
-        default=0.35,
-        help="Dithering strength for ordered mode 0-1 (default: 0.35)"
-    )
-    
-    # Processing settings
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed for reproducible results (default: 42)"
-    )
-    
-    # Export settings
-    parser.add_argument(
-        "--page-size",
-        choices=["A4", "A3"],
-        default="A4",
-        help="PDF page size (default: A4)"
-    )
-    parser.add_argument(
-        "--spare-ratio",
-        type=float,
-        default=0.10,
-        help="Spare drill ratio 0-1 (default: 0.10)"
-    )
-    parser.add_argument(
-        "--bag-size",
-        type=int,
-        default=200,
-        help="Drills per bag (default: 200)"
+        help="Crop rectangle as 'x,y,width,height' in normalized coordinates (0-1)"
     )
     
     # Utility commands
     parser.add_argument(
-        "--validate-only",
+        "--list-styles",
         action="store_true",
-        help="Only validate input image, don't generate kit"
+        help="List available styles and their DMC palettes"
     )
     parser.add_argument(
-        "--info",
+        "--style-info",
+        type=str,
+        choices=["original", "vintage", "popart"],
+        help="Show detailed information about a specific style"
+    )
+    parser.add_argument(
+        "--validate-only",
         action="store_true",
-        help="Show detailed image information"
+        help="Only validate input image and show analysis, don't generate kit"
     )
     parser.add_argument(
         "--verbose", "-v",
@@ -156,250 +113,179 @@ Examples:
     return parser
 
 
-def parse_canvas_size(size_str: str) -> tuple[float, float]:
-    """Parse canvas size string like '30x40' into (30.0, 40.0)."""
-    try:
-        parts = size_str.lower().split('x')
-        if len(parts) != 2:
-            raise ValueError("Format must be WxH (e.g., 30x40)")
-        
-        width = float(parts[0])
-        height = float(parts[1])
-        
-        if width <= 0 or height <= 0:
-            raise ValueError("Dimensions must be positive")
-        
-        return width, height
-    except (ValueError, IndexError) as e:
-        raise ValueError(f"Invalid canvas size '{size_str}': {e}")
-
-
 def validate_arguments(args: argparse.Namespace) -> bool:
-    """Validate command-line arguments."""
-    errors = []
+    """Validate command-line arguments for fixed palette system."""
+    # Handle utility commands first
+    if args.list_styles or args.style_info:
+        return True
     
-    # Check input file
-    if not os.path.exists(args.input):
-        errors.append(f"Input file not found: {args.input}")
-    
-    # Check canvas size format
-    try:
-        width, height = parse_canvas_size(args.canvas_size)
-    except ValueError as e:
-        errors.append(str(e))
-    
-    # Check ranges
-    if not (0 <= args.dither_strength <= 1):
-        errors.append("Dither strength must be between 0 and 1")
-    
-    if args.max_colors < 1:
-        errors.append("Max colors must be at least 1")
-    
-    if args.max_colors > 100:
-        errors.append("Max colors should not exceed 100 for practical use")
-    
-    if args.spare_ratio < 0:
-        errors.append("Spare ratio must be non-negative")
-    
-    if args.bag_size < 1:
-        errors.append("Bag size must be at least 1")
-    
-    if args.drill_size_mm and args.drill_size_mm <= 0:
-        errors.append("Drill size must be positive")
-    
-    # Report errors
-    if errors:
-        print("Validation errors:")
-        for error in errors:
-            print(f"  - {error}")
+    # Check required arguments for kit generation
+    if not args.input:
+        print("Error: Input image file is required for kit generation")
         return False
+    
+    if not args.output:
+        print("Error: Output directory is required for kit generation")
+        return False
+    
+    if not args.style:
+        print("Error: Style selection is required. Use --style original|vintage|popart")
+        return False
+    
+    # Check input file exists
+    if not os.path.exists(args.input):
+        print(f"Error: Input file not found: {args.input}")
+        return False
+    
+    # Validate print specifications
+    if args.dpi < 300:
+        print("Error: DPI must be ≥ 300 for print quality")
+        return False
+    
+    if not (10 <= args.margin_mm <= 15):
+        print("Error: Margins must be between 10-15mm")
+        return False
+    
+    if not (2.3 <= args.cell_size_mm <= 3.0):
+        print("Error: Cell size must be between 2.3-3.0mm")
+        return False
+    
+    # Parse and validate crop rectangle if provided
+    if args.crop:
+        try:
+            parts = args.crop.split(',')
+            if len(parts) != 4:
+                raise ValueError("Crop must have 4 values")
+            
+            x, y, w, h = map(float, parts)
+            if not (0 <= x <= 1 and 0 <= y <= 1 and 0 <= w <= 1 and 0 <= h <= 1):
+                raise ValueError("Crop values must be between 0-1")
+            if x + w > 1 or y + h > 1:
+                raise ValueError("Crop rectangle exceeds image bounds")
+                
+        except ValueError as e:
+            print(f"Error: Invalid crop format '{args.crop}': {e}")
+            return False
     
     return True
 
 
-def load_config(args: argparse.Namespace) -> Config:
-    """Load configuration from arguments and optional config file."""
-    # Parse canvas size
-    width_cm, height_cm = parse_canvas_size(args.canvas_size)
-    
-    # Create overrides dictionary
-    overrides = {
-        'input': args.input,
-        'output_dir': args.output,
-        'canvas': {
-            'width_cm': width_cm,
-            'height_cm': height_cm,
-            'drill_shape': args.drill_shape
-        },
-        'palette': {
-            'max_colors': args.max_colors,
-            'preserve_skin_tones': args.preserve_skin_tones
-        },
-        'dither': {
-            'mode': args.dither,
-            'strength': args.dither_strength
-        },
-        'processing': {
-            'seed': args.seed
-        },
-        'export': {
-            'page': args.page_size,
-            'spare_ratio': args.spare_ratio,
-            'bag_size': args.bag_size
-        }
-    }
-    
-    # Add drill size if specified
-    if args.drill_size_mm:
-        overrides['canvas']['drill_size_mm'] = args.drill_size_mm
-    
-    # Load configuration
-    config_path = args.config or "config.yaml"
-    config = Config.from_yaml(config_path, **overrides)
-    
-    return config
+def parse_crop_rectangle(crop_str: str) -> tuple:
+    """Parse crop rectangle string into tuple."""
+    parts = crop_str.split(',')
+    return tuple(map(float, parts))
 
 
-def show_image_info(image_path: str, config: Config):
-    """Show detailed information about input image."""
-    loader = ImageLoader(config)
-    info = loader.get_image_info(image_path)
+def list_styles():
+    """List all available styles with their DMC palettes."""
+    print("\n" + "="*60)
+    print("AVAILABLE STYLES")
+    print("="*60)
     
-    if 'error' in info:
-        print(f"Error: {info['error']}")
-        return
+    styles = get_available_styles()
+    for style in styles:
+        info = get_style_info(style)
+        print(f"\n{style.upper()}:")
+        print(f"  Description: {info['description']}")
+        print(f"  Rationale: {info['rationale']}")
+        print(f"  DMC Codes: {', '.join(info['dmc_codes'])}")
+        print("  Colors:")
+        for color in info['colors']:
+            print(f"    {color['dmc_code']}: {color['name']} ({color['hex']})")
     
     print("\n" + "="*60)
-    print("IMAGE INFORMATION")
+
+
+def show_style_info(style_name: str):
+    """Show detailed information about a specific style."""
+    print(f"\n" + "="*60)
+    print(f"STYLE: {style_name.upper()}")
     print("="*60)
-    print(f"Filename: {info['filename']}")
-    print(f"Size: {info['size'][0]} × {info['size'][1]} pixels")
-    print(f"Aspect ratio: {info['aspect_ratio']:.3f}")
-    print(f"Mode: {info['mode']}")
-    print(f"Format: {info['format']}")
-    print(f"File size: {info['file_size'] / 1024:.1f} KB")
-    print(f"Unique colors: {info['unique_colors']:,}")
-    print(f"Estimated difficulty: {info['estimated_difficulty']}")
-    print(f"Mean color: RGB{info['mean_color']}")
-    print(f"Color std: RGB{info['std_color']}")
     
-    # Canvas compatibility
-    canvas_aspect = config.canvas.aspect_ratio
-    current_aspect = info['aspect_ratio']
-    aspect_diff = abs(current_aspect - canvas_aspect) / canvas_aspect
+    info = get_style_info(style_name)
+    print(f"Description: {info['description']}")
+    print(f"Rationale: {info['rationale']}")
+    print(f"\nDMC Palette (7 fixed colors):")
+    print("-" * 40)
     
-    print(f"\nCanvas compatibility:")
-    print(f"  Target aspect ratio: {canvas_aspect:.3f}")
-    print(f"  Current aspect ratio: {current_aspect:.3f}")
-    print(f"  Difference: {aspect_diff:.1%}")
-    
-    if aspect_diff < 0.05:
-        print("  ✓ Excellent match")
-    elif aspect_diff < 0.15:
-        print("  ⚠ Good match")
-    elif aspect_diff < 0.30:
-        print("  ⚠ Moderate adjustment needed")
-    else:
-        print("  ⚠ Significant adjustment required")
+    for i, color in enumerate(info['colors']):
+        print(f"{i+1}. {color['dmc_code']}: {color['name']}")
+        print(f"   RGB: {color['rgb']}")
+        print(f"   Hex: {color['hex']}")
+        print()
     
     print("="*60)
 
 
-def validate_input_image(image_path: str, config: Config) -> bool:
-    """Validate input image for processing."""
-    loader = ImageLoader(config)
-    validation = loader.validate_image(image_path)
-    
-    print(f"\nValidating: {image_path}")
-    
-    if validation['valid']:
-        print("✓ Image validation passed")
-        
-        # Show warnings
-        if validation['warnings']:
-            print("\nWarnings:")
-            for warning in validation['warnings']:
-                print(f"  ⚠ {warning}")
-        
-        return True
-    else:
-        print("✗ Image validation failed")
-        print("\nErrors:")
-        for error in validation['errors']:
-            print(f"  ✗ {error}")
-        
-        return False
-
-
-def generate_kit(config: Config) -> bool:
-    """Generate complete diamond painting kit."""
+def generate_kit(args: argparse.Namespace) -> bool:
+    """Generate complete diamond painting kit with fixed palette."""
     try:
+        # Parse crop rectangle if provided
+        crop_rect = None
+        if args.crop:
+            crop_rect = parse_crop_rectangle(args.crop)
+        
         print("\n" + "="*60)
-        print("DIAMOND PAINTING KIT GENERATOR")
+        print("QBRIX DIAMOND PAINTING KIT GENERATOR")
         print("="*60)
+        print(f"Style: {args.style.upper()}")
+        print(f"Input: {args.input}")
+        print(f"Output: {args.output}")
+        print(f"DPI: {args.dpi}")
+        print(f"Cell size: {args.cell_size_mm}mm")
+        print(f"Margins: {args.margin_mm}mm")
         
-        # Initialize components
-        print("Initializing components...")
-        dmc_palette = get_dmc_palette(config.palette.dmc_file)
-        image_loader = ImageLoader(config)
-        quantizer = ColorQuantizer(config, dmc_palette)
-        dither_engine = DitherEngine(config)
+        if crop_rect:
+            print(f"Crop: {crop_rect}")
         
-        # Load and process image
-        print("\n" + "-"*40)
-        print("IMAGE PROCESSING")
-        print("-"*40)
-        image_lab, metadata = image_loader.load_image(config.input)
+        print("-" * 60)
         
-        # Quantize colors
-        print("\n" + "-"*40)
-        print("COLOR QUANTIZATION")
-        print("-"*40)
-        quantized_lab, dmc_colors = quantizer.quantize_image(image_lab)
-        
-        # Apply dithering
-        print("\n" + "-"*40)
-        print("DITHERING")
-        print("-"*40)
-        dithered_lab = dither_engine.apply_dithering(image_lab, quantized_lab)
-        
-        # Create grid
-        print("\n" + "-"*40)
-        print("GRID GENERATION")
-        print("-"*40)
-        canvas_grid = CanvasGrid(config, dmc_colors)
-        grid_data = canvas_grid.create_grid(dithered_lab)
-        
-        # Generate outputs
-        print("\n" + "-"*40)
-        print("EXPORT GENERATION")
-        print("-"*40)
-        preview_generator = PreviewGenerator(config)
-        export_manager = ExportManager(config)
-        
-        # Create preview
-        preview_image = preview_generator.create_preview(
-            dithered_lab, dmc_colors, canvas_grid
+        # Generate the kit
+        results = generate_diamond_kit(
+            image_path=args.input,
+            style_name=args.style.upper(),
+            output_dir=args.output,
+            dpi=args.dpi,
+            margin_mm=args.margin_mm,
+            cell_size_mm=args.cell_size_mm,
+            crop_rect=crop_rect
         )
         
-        # Export all files
-        export_manager.export_complete_kit(
-            canvas_grid, preview_image, metadata
-        )
-        
+        # Display results
         print("\n" + "="*60)
         print("✓ KIT GENERATION COMPLETE")
         print("="*60)
-        print(f"Output directory: {config.output_dir}")
-        print(f"DMC colors used: {len(dmc_colors)}")
-        print(f"Grid size: {canvas_grid.cells_w} × {canvas_grid.cells_h}")
-        print(f"Total drills: {canvas_grid._get_total_drills():,}")
+        
+        metadata = results["metadata"]
+        grid_specs = results["grid_specs"]
+        quality_report = results["quality_report"]
+        
+        print(f"Output directory: {args.output}")
+        print(f"Style: {metadata['generation_info']['style']}")
+        print(f"Grid size: {grid_specs.cols} × {grid_specs.rows} ({grid_specs.total_cells:,} cells)")
+        print(f"Total pages: {metadata['print_specifications']['total_pages']}")
+        print(f"Grid hash: {metadata['generation_info']['grid_hash']}")
+        
+        print(f"\nQuality Assessment:")
+        print(f"  Overall Quality: {quality_report.get('overall_quality', 'N/A')}")
+        print(f"  ΔE Mean: {metadata['deltaE_stats']['mean']:.2f}")
+        print(f"  ΔE Max: {metadata['deltaE_stats']['max']:.2f}")
+        print(f"  SSIM: {metadata['ssim']:.4f}")
+        
+        if metadata.get('warnings'):
+            print(f"\nWarnings:")
+            for warning in metadata['warnings']:
+                print(f"  ⚠ {warning}")
+        
+        print(f"\nGenerated Files:")
+        for key, filename in results["outputs"].items():
+            print(f"  ✓ {filename}")
         
         return True
         
     except Exception as e:
         print(f"\n✗ Error during kit generation: {e}")
-        if '--verbose' in sys.argv:
+        if args.verbose:
             import traceback
             traceback.print_exc()
         return False
@@ -410,56 +296,21 @@ def main():
     parser = create_parser()
     args = parser.parse_args()
     
-    # Validate arguments
+    # Handle utility commands
+    if args.list_styles:
+        list_styles()
+        return
+    
+    if args.style_info:
+        show_style_info(args.style_info)
+        return
+    
+    # Validate arguments for kit generation
     if not validate_arguments(args):
         sys.exit(1)
     
-    # Load configuration
-    try:
-        config = load_config(args)
-    except Exception as e:
-        print(f"Configuration error: {e}")
-        print("Using default configuration...")
-        # Create default config with command line overrides
-        config = Config()
-        if args.input:
-            config.input = args.input
-        if args.output:
-            config.output_dir = args.output
-        # Apply other overrides manually
-        try:
-            width_cm, height_cm = parse_canvas_size(args.canvas_size)
-            config.canvas.width_cm = width_cm
-            config.canvas.height_cm = height_cm
-            config.canvas.drill_shape = args.drill_shape
-            config.palette.max_colors = args.max_colors
-            config.palette.preserve_skin_tones = args.preserve_skin_tones
-            config.dither.mode = args.dither
-            config.dither.strength = args.dither_strength
-            config.processing.seed = args.seed
-            config.export.page = args.page_size
-            config.export.spare_ratio = args.spare_ratio
-            config.export.bag_size = args.bag_size
-            if args.drill_size_mm:
-                config.canvas.drill_size_mm = args.drill_size_mm
-        except Exception as override_error:
-            print(f"Warning: Could not apply all overrides: {override_error}")
-    
-    # Handle utility commands
-    if args.info:
-        show_image_info(args.input, config)
-        return
-    
-    if args.validate_only:
-        if validate_input_image(args.input, config):
-            print("✓ Image is ready for processing")
-            sys.exit(0)
-        else:
-            print("✗ Image validation failed")
-            sys.exit(1)
-    
     # Generate kit
-    success = generate_kit(config)
+    success = generate_kit(args)
     sys.exit(0 if success else 1)
 
 

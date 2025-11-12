@@ -1,11 +1,12 @@
 """
-PDF generation for diamond painting instruction booklets.
+PDF generation for QBRIX-style diamond painting instruction booklets.
+Fixed 7-color DMC palettes with numeric grids and professional assembly instructions.
 """
 
 import os
 import math
 from typing import List, Tuple, Dict, Any
-from reportlab.lib.pagesizes import A4, A3, landscape
+from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm, cm
 from reportlab.lib.colors import Color, black, white, lightgrey
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -15,81 +16,61 @@ from reportlab.pdfgen import canvas
 from PIL import Image
 import numpy as np
 
-from .config import Config
-from .grid import CanvasGrid
+from .grid_index_map import GridIndexMap
+from .print_math import PrintSpecs, PrintMathEngine
 
 
-class PDFGenerator:
-    """Generates professional PDF instruction booklets."""
+class QBRIXPDFGenerator:
+    """Generates QBRIX-quality PDF instruction booklets with fixed 7-color palettes."""
     
-    def __init__(self, config: Config):
-        """Initialize PDF generator with configuration."""
-        self.config = config
-        self.page_size = A3 if config.export.page == "A3" else A4
-        self.dpi = config.export.pdf_dpi
+    def __init__(self, print_specs: PrintSpecs):
+        """Initialize PDF generator with print specifications."""
+        self.print_specs = print_specs
+        self.print_engine = PrintMathEngine(print_specs)
         
-        # Calculate cell size for PDF
-        self.cell_size_mm = config.canvas.drill_size_mm
-        self.cell_size_pt = self.cell_size_mm * mm / mm * mm  # Convert to points
+        # Page setup (always A4 landscape for QBRIX)
+        self.page_size = landscape(A4)
+        self.page_w, self.page_h = self.page_size
+        self.dpi = print_specs.dpi
         
-        # Get page dimensions
-        if config.export.page == "A3":
-            self.page_w, self.page_h = landscape(A3)
-        else:
-            self.page_w, self.page_h = landscape(A4)
+        # Cell size calculations
+        self.cell_size_mm = print_specs.cell_size_mm
+        self.cell_size_pt = self.cell_size_mm * mm
         
-        # Calculate margins and usable area
-        self.margin_mm = config.export.margin_mm
+        # Margins and usable area
+        self.margin_mm = print_specs.margin_mm
         self.margin_pt = self.margin_mm * mm
         self.usable_w = self.page_w - 2 * self.margin_pt
         self.usable_h = self.page_h - 2 * self.margin_pt
         
-        # Calculate tiles needed
-        self.tiles = self._calculate_tiles()
+        # Symbol font settings (digits 1-7)
+        self.symbol_font = "Helvetica-Bold"
+        self.symbol_font_size_pt = self.cell_size_pt * 0.4  # 40% of cell size
+        
+        # Verify symbol legibility
+        self.x_height_mm = self.cell_size_mm * 0.43  # Approximate x-height for digits
+        self.stroke_thickness_mm = self.cell_size_mm * 0.08  # 8% of cell size
     
-    def _calculate_tiles(self) -> List[Tuple[int, int, int, int]]:
-        """Calculate tile positions and sizes for multi-page layout."""
-        cells_w = self.config.canvas.cells_w
-        cells_h = self.config.canvas.cells_h
-        overlap_mm = self.config.export.overlap_mm
-        overlap_pt = overlap_mm * mm
+    def generate_qbrix_pdf(self, grid_map: GridIndexMap, 
+                          preview_image: np.ndarray,
+                          metadata: Dict[str, Any],
+                          output_path: str) -> str:
+        """
+        Generate complete QBRIX-style PDF instruction booklet.
         
-        # Calculate how many cells fit per page
-        cells_per_page_w = int(self.usable_w / self.cell_size_pt)
-        cells_per_page_h = int(self.usable_h / self.cell_size_pt)
-        
-        # Calculate overlap in cells
-        overlap_cells = int(overlap_pt / self.cell_size_pt)
-        
-        tiles = []
-        y_start = 0
-        page_num = 1
-        
-        while y_start < cells_h:
-            x_start = 0
+        Args:
+            grid_map: Grid index map with fixed palette
+            preview_image: Preview of completed design
+            metadata: Kit metadata
+            output_path: Output PDF path
             
-            while x_start < cells_w:
-                # Calculate tile dimensions
-                tile_w = min(cells_per_page_w, cells_w - x_start)
-                tile_h = min(cells_per_page_h, cells_h - y_start)
-                
-                tiles.append((x_start, y_start, tile_w, tile_h, page_num))
-                
-                x_start += cells_per_page_w - overlap_cells
-                if x_start >= cells_w:
-                    break
-            
-            y_start += cells_per_page_h - overlap_cells
-            page_num += 1
+        Returns:
+            Path to generated PDF
+        """
+        print(f"Generating QBRIX PDF with fixed 7-color palette...")
         
-        return tiles
-    
-    def generate_complete_pdf(self, canvas_grid: CanvasGrid,
-                            preview_image: np.ndarray,
-                            metadata: Dict[str, Any],
-                            output_path: str):
-        """Generate complete PDF instruction booklet."""
-        print(f"Generating PDF with {len(self.tiles)} pages...")
+        # Calculate tiling for this grid
+        tiles = self.print_engine.calculate_tiling(grid_map.grid_specs)
         
         # Create PDF document
         doc = SimpleDocTemplate(
@@ -104,39 +85,41 @@ class PDFGenerator:
         # Build content
         story = []
         
-        # Title page
-        story.extend(self._create_title_page(canvas_grid, preview_image, metadata))
+        # Page 1: Title/overview
+        story.extend(self._create_qbrix_title_page(grid_map, preview_image, metadata))
         story.append(PageBreak())
         
-        # Color legend page
-        story.extend(self._create_legend_page(canvas_grid))
+        # Page 2: Professional legend with 7 fixed colors
+        story.extend(self._create_qbrix_legend_page(grid_map))
         story.append(PageBreak())
         
-        # Instructions page
-        story.extend(self._create_instructions_page(canvas_grid))
+        # Page 3: Assembly instructions
+        story.extend(self._create_qbrix_instructions_page(grid_map, tiles))
         story.append(PageBreak())
         
-        # Pattern pages
-        story.extend(self._create_pattern_pages(canvas_grid))
+        # Pages 4+: Numeric grid tiles
+        story.extend(self._create_qbrix_pattern_pages(grid_map, tiles))
         
         # Build PDF
         doc.build(story)
-        print(f"PDF generated: {output_path}")
+        print(f"QBRIX PDF generated: {output_path}")
+        return output_path
     
-    def _create_title_page(self, canvas_grid: CanvasGrid,
-                          preview_image: np.ndarray,
-                          metadata: Dict[str, Any]) -> List:
-        """Create title page with preview and summary."""
+    def _create_qbrix_title_page(self, grid_map: GridIndexMap,
+                               preview_image: np.ndarray,
+                               metadata: Dict[str, Any]) -> List:
+        """Create QBRIX title page with specifications and quality metrics."""
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
-            'CustomTitle',
+            'QBRIXTitle',
             parent=styles['Title'],
-            fontSize=24,
-            spaceAfter=30
+            fontSize=28,
+            spaceAfter=30,
+            alignment=1  # Center
         )
         
         heading_style = ParagraphStyle(
-            'CustomHeading',
+            'QBRIXHeading',
             parent=styles['Heading1'],
             fontSize=16,
             spaceAfter=12
@@ -146,171 +129,208 @@ class PDFGenerator:
         
         content = []
         
-        # Title
-        content.append(Paragraph("DIAMOND PAINTING KIT", title_style))
-        content.append(Spacer(1, 12))
-        
-        # Canvas information
-        canvas_info = [
-            f"<b>Canvas Size:</b> {self.config.canvas.width_cm} × {self.config.canvas.height_cm} cm",
-            f"<b>Grid Size:</b> {canvas_grid.cells_w} × {canvas_grid.cells_h} drills",
-            f"<b>Drill Shape:</b> {self.config.canvas.drill_shape.capitalize()}",
-            f"<b>Drill Size:</b> {self.config.canvas.drill_size_mm} mm",
-            f"<b>Total Colors:</b> {len(canvas_grid.dmc_colors)}",
-            f"<b>Total Drills:</b> {canvas_grid._get_total_drills():,}"
-        ]
-        
-        for info in canvas_info:
-            content.append(Paragraph(info, normal_style))
-        
+        # Main title
+        content.append(Paragraph("QBRIX DIAMOND PAINTING KIT", title_style))
         content.append(Spacer(1, 20))
         
-        # Processing info
-        content.append(Paragraph("<b>Processing Details:</b>", heading_style))
+        # Style and palette info
+        content.append(Paragraph(f"Style: {grid_map.style_name}", heading_style))
+        content.append(Paragraph("Fixed 7-Color DMC Palette", normal_style))
+        content.append(Spacer(1, 15))
         
-        processing_info = [
-            f"Color Quantization: {self.config.palette.max_colors} colors, DMC palette",
-            f"Dithering: {self.config.dither.mode} mode",
-            f"Spare Drills: {self.config.export.spare_ratio:.0%}",
-            f"Generated: {metadata.get('filename', 'Unknown image')}"
+        # Specifications table
+        specs_data = [
+            ['Specification', 'Value'],
+            ['Grid Dimensions', f"{grid_map.grid_specs.cols} × {grid_map.grid_specs.rows}"],
+            ['Total Cells', f"{grid_map.grid_specs.total_cells:,}"],
+            ['Cell Size', f"{self.cell_size_mm:.1f} mm"],
+            ['Print DPI', f"{self.dpi}"],
+            ['Paper Size', 'A4 Landscape'],
+            ['Margins', f"{self.margin_mm:.0f} mm"],
+            ['Total Pages', f"{len(self.print_engine.calculate_tiling(grid_map.grid_specs)) + 3}"],  # +3 for title/legend/instructions
+            ['Grid Hash', f"{grid_map.grid_hash}"]
         ]
         
-        for info in processing_info:
-            content.append(Paragraph(info, normal_style))
+        specs_table = Table(specs_data, colWidths=[60*mm, 80*mm])
+        specs_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), lightgrey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 1, black),
+            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
         
-        # Note about image preview (would be added as image if available)
+        content.append(specs_table)
         content.append(Spacer(1, 20))
-        content.append(Paragraph("<i>Preview image shows the completed diamond painting design.</i>", normal_style))
+        
+        # Quality metrics
+        content.append(Paragraph("Quality Assessment", heading_style))
+        
+        quality_text = f"""
+        <b>ΔE2000 Color Accuracy:</b> Mean: {metadata.get('deltaE_stats', {}).get('mean', 'N/A'):.1f}, 
+        Max: {metadata.get('deltaE_stats', {}).get('max', 'N/A'):.1f}<br/>
+        <b>Structural Similarity (SSIM):</b> {metadata.get('ssim', 'N/A'):.3f}<br/>
+        <b>Scale Factor:</b> {metadata.get('scale_factor', 1.0):.3f}
+        """
+        
+        content.append(Paragraph(quality_text, normal_style))
+        
+        # Warnings
+        warnings = metadata.get('warnings', [])
+        if warnings:
+            content.append(Spacer(1, 10))
+            content.append(Paragraph("Quality Warnings", heading_style))
+            for warning in warnings:
+                content.append(Paragraph(f"⚠ {warning}", normal_style))
         
         return content
     
-    def _create_legend_page(self, canvas_grid: CanvasGrid) -> List:
-        """Create color legend with drill counts and symbols."""
+    def _create_qbrix_legend_page(self, grid_map: GridIndexMap) -> List:
+        """Create professional legend page for 7 fixed DMC colors."""
         styles = getSampleStyleSheet()
         heading_style = ParagraphStyle(
-            'CustomHeading',
+            'QBRIXLegend',
             parent=styles['Heading1'],
             fontSize=18,
-            spaceAfter=20
+            spaceAfter=20,
+            alignment=1  # Center
         )
         
         content = []
-        content.append(Paragraph("COLOR LEGEND", heading_style))
+        content.append(Paragraph("COLOR LEGEND - FIXED PALETTE", heading_style))
+        content.append(Paragraph(f"Style: {grid_map.style_name.upper()}", styles['Normal']))
+        content.append(Spacer(1, 15))
         
-        # Get legend items
-        legend_items = canvas_grid.get_color_legend()
+        # Count color usage
+        h, w = grid_map.grid_data.shape
+        unique_indices, counts = np.unique(grid_map.grid_data, return_counts=True)
         
-        # Create table data
-        table_data = [['Symbol', 'DMC Code', 'Color Name', 'Drill Count', 'Bags Needed']]
+        # Create legend data
+        legend_data = [['Symbol', 'DMC Code', 'Color Name', 'Hex', 'Drill Count', 'Bag Qty (200)']]
         
-        for item in legend_items:
-            table_data.append([
-                item['symbol'],
-                item['dmc_code'],
-                item['name'],
-                str(item['count']),
-                str(item['bags_needed'])
-            ])
+        for idx, count in zip(unique_indices, counts):
+            if idx < len(grid_map.palette_colors):
+                color = grid_map.palette_colors[idx]
+                symbol = str(idx + 1)  # Use 1-7 instead of 0-6 for user-friendliness
+                bag_qty = -(-count // 200)  # Ceiling division
+                
+                legend_data.append([
+                    symbol,
+                    color.dmc_code,
+                    color.name,
+                    color.hex,
+                    f"{count:,}",
+                    str(bag_qty)
+                ])
         
         # Create table
-        col_widths = [30*mm, 25*mm, 60*mm, 30*mm, 30*mm]
-        table = Table(table_data, colWidths=col_widths, repeatRows=1)
+        col_widths = [20*mm, 25*mm, 50*mm, 25*mm, 30*mm, 25*mm]
+        legend_table = Table(legend_data, colWidths=col_widths, repeatRows=1)
         
-        # Style table
-        table.setStyle(TableStyle([
-            # Header styling
+        # Style table with professional appearance
+        legend_table.setStyle(TableStyle([
+            # Header
             ('BACKGROUND', (0, 0), (-1, 0), lightgrey),
-            ('TEXTCOLOR', (0, 0), (-1, 0), black),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
             ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
             
-            # Data styling
+            # Data rows
             ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
-            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
             ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             
             # Grid
             ('GRID', (0, 0), (-1, -1), 1, black),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             
-            # Alternating row colors
+            # Color sample column (column 0 for symbols)
+            ('BACKGROUND', (0, 1), (0, -1), white),
+            
+            # Alternating row colors for readability
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [white, lightgrey]),
         ]))
         
-        content.append(table)
-        
-        # Add summary information
+        content.append(legend_table)
         content.append(Spacer(1, 20))
         
-        total_drills = canvas_grid._get_total_drills()
-        total_bags = sum(item['bags_needed'] for item in legend_items)
+        # Summary statistics
+        total_drills = grid_map.grid_specs.total_cells
+        total_bags = sum(-(-count // 200) for count in counts)
         
         summary_text = f"""
         <b>Summary:</b><br/>
-        Total DMC Colors: {len(legend_items)}<br/>
-        Total Drills: {total_drills:,}<br/>
-        Total Bags: {total_bags}<br/>
-        Spare Ratio: {self.config.export.spare_ratio:.0%}<br/>
-        Drills per Bag: {self.config.export.bag_size}
+        • Style: {grid_map.style_name.upper()}<br/>
+        • Total Colors: 7 (fixed palette)<br/>
+        • Colors Used: {len(unique_indices)}<br/>
+        • Total Drills: {total_drills:,}<br/>
+        • Total Bags (200 drills each): {total_bags}<br/>
+        • Grid Hash: {grid_map.grid_hash}<br/>
+        • Cell Size: {self.cell_size_mm:.1f}mm<br/>
+        • Print Quality: {self.dpi} DPI
         """
         
         content.append(Paragraph(summary_text, styles['Normal']))
         
         return content
     
-    def _create_instructions_page(self, canvas_grid: CanvasGrid) -> List:
-        """Create assembly instructions page."""
+    def _create_qbrix_instructions_page(self, grid_map: GridIndexMap, 
+                                    tiles: List) -> List:
+        """Create QBRIX assembly instructions with tiling information."""
         styles = getSampleStyleSheet()
         heading_style = ParagraphStyle(
-            'CustomHeading',
+            'QBRIXInstructions',
             parent=styles['Heading1'],
             fontSize=18,
-            spaceAfter=20
+            spaceAfter=15
         )
         
         content = []
         content.append(Paragraph("ASSEMBLY INSTRUCTIONS", heading_style))
         
-        instructions = [
-            "<b>1. Prepare Your Workspace</b>",
-            "• Find a clean, well-lit area to work",
-            "• Lay out all materials: canvas, drills, tray, and pen tool",
-            "• Keep the plastic cover on the canvas when not working",
-            "",
-            "<b>2. Organize Your Drills</b>",
-            f"• Sort your DMC drills using the color legend provided",
-            "• Use a drill organizer or small containers for each color",
-            "• Label each container with the DMC code and symbol",
-            "• Check that you have the correct number of bags for each color",
-            "",
-            "<b>3. Start Diamond Painting</b>",
-            "• Begin with one color or one section at a time",
-            "• Pour a small amount of drills into the provided tray",
-            "• Gently shake the tray to turn the drills right side up",
-            "• Using the pen tool, pick up a single drill",
-            "• Press the drill firmly onto the corresponding symbol on the canvas",
-            "",
-            "<b>4. Working Techniques</b>",
-            "• Work from top to bottom to avoid smudging completed areas",
-            "• Replace the plastic cover after each session to protect your work",
-            "• Use a rolling pin or book to press down any loose drills",
-            "• Take breaks to avoid eye strain",
-            "",
-            "<b>5. Completion and Finishing</b>",
-            "• Once all drills are placed, press firmly over the entire canvas",
-            "• Apply a sealant if desired (optional)",
-            "• Frame or display your completed diamond painting",
-            "",
+        # Kit-specific information
+        kit_info = [
             f"<b>Kit Specifications:</b>",
-            f"• Canvas: {self.config.canvas.width_cm}×{self.config.canvas.height_cm} cm",
-            f"• Grid: {canvas_grid.cells_w}×{canvas_grid.cells_h} drills",
-            f"• Drill Type: {self.config.canvas.drill_shape} ({self.config.canvas.drill_size_mm}mm)",
-            f"• Total Colors: {len(canvas_grid.dmc_colors)} DMC colors",
-            f"• Difficulty: {self._get_difficulty_description(canvas_grid)}",
+            f"• Style: {grid_map.style_name.upper()} with 7 fixed DMC colors",
+            f"• Grid size: {grid_map.grid_specs.cols} × {grid_map.grid_specs.rows} ({grid_map.grid_specs.total_cells:,} cells)",
+            f"• Cell size: {self.cell_size_mm:.1f}mm (symbol x-height: {self.x_height_mm:.2f}mm)",
+            f"• Print settings: {self.dpi} DPI, {self.margin_mm:.0f}mm margins",
+            f"• Total pattern pages: {len(tiles)}",
+            "",
+            "<b>Printing Instructions:</b>",
+            "• Print at 100% scale - do not fit or scale to page",
+            "• Use A4 paper in landscape orientation",
+            "• Ensure print quality is set to high (300+ DPI)",
+            "• Check that crop marks and registration crosses are visible",
+            "",
+            "<b>Page Assembly:</b>",
+            f"• This kit contains {len(tiles)} pattern pages plus reference pages",
+            "• Each pattern page shows a section of the complete grid",
+            "• Pages use numeric symbols 1-7 corresponding to the legend",
+            "• Coordinate labels help with page alignment",
+            "",
+            "<b>Cutting and Alignment:</b>",
+            "• Cut pages along the outer crop marks",
+            "• Use registration crosses to align adjacent pages",
+            f"• Pages may have {self.print_specs.overlap_cells} cell overlaps for easier matching",
+            "• Trim overlaps as needed for your assembly method",
+            "",
+            "<b>Diamond Placement:</b>",
+            "• Work with one color at a time using the legend",
+            "• Match symbols on pages to symbols on your adhesive canvas",
+            "• Use the coordinate system to track your progress",
+            "• Symbols 1-7 correspond to the fixed DMC palette colors",
+            "",
+            "<b>Tips for Best Results:</b>",
+            "• Work from top to bottom, left to right",
+            "• Keep the protective film on unused areas",
+            "• Use a roller or flat object to press down placed diamonds",
+            "• Take breaks to maintain accuracy and reduce eye strain",
+            "• Store unused diamonds in their original bags"
         ]
         
-        for instruction in instructions:
+        for instruction in kit_info:
             if instruction.startswith("<b>"):
                 content.append(Paragraph(instruction, heading_style))
             else:
@@ -321,194 +341,230 @@ class PDFGenerator:
         
         return content
     
-    def _create_pattern_pages(self, canvas_grid: CanvasGrid) -> List:
-        """Create pattern pages with grid and symbols."""
+    def _create_qbrix_pattern_pages(self, grid_map: GridIndexMap, 
+                                  tiles: List) -> List:
+        """Create QBRIX numeric grid pattern pages."""
+        from reportlab.platypus import Flowable
+        
+        class QBRIXGridPage(Flowable):
+            """Custom flowable for QBRIX grid pages."""
+            
+            def __init__(self, grid_map, tile, pdf_generator):
+                super().__init__()
+                self.grid_map = grid_map
+                self.tile = tile
+                self.pdf_gen = pdf_generator
+                self.width = pdf_generator.page_w - 2 * pdf_generator.margin_pt
+                self.height = pdf_generator.page_h - 2 * pdf_generator.margin_pt
+            
+            def draw(self):
+                canvas = self.canv
+                pdf_gen = self.pdf_gen
+                
+                # Save canvas state
+                canvas.saveState()
+                
+                # Add QBRIX page header
+                pdf_gen._add_qbrix_page_header(canvas, self.tile)
+                
+                # Add crop marks and registration crosses
+                pdf_gen._add_qbrix_crop_marks(canvas)
+                
+                # Draw numeric grid
+                pdf_gen._draw_qbrix_numeric_grid(canvas, self.grid_map, self.tile)
+                
+                # Add coordinate labels
+                pdf_gen._add_qbrix_coordinate_labels(canvas, self.tile)
+                
+                # Add mini-map showing tile position
+                pdf_gen._add_qbrix_minimap(canvas, self.grid_map, self.tile)
+                
+                # Restore canvas state
+                canvas.restoreState()
+        
         content = []
         
-        # Create pattern pages for each tile
-        for i, (x_start, y_start, tile_w, tile_h, page_num) in enumerate(self.tiles):
-            # Create canvas for this tile
-            page_canvas = canvas.Canvas(
-                f"pattern_page_{i}.pdf",
-                pagesize=self.page_size
-            )
+        for i, tile in enumerate(tiles):
+            # Add custom flowable for each grid page
+            grid_page = QBRIXGridPage(grid_map, tile, self)
+            content.append(grid_page)
             
-            # Add page header
-            self._add_page_header(page_canvas, f"Pattern Page {page_num}")
-            
-            # Add crop marks and registration marks
-            self._add_crop_marks(page_canvas)
-            
-            # Draw the grid pattern
-            self._draw_grid_pattern(page_canvas, canvas_grid, x_start, y_start, tile_w, tile_h)
-            
-            # Add coordinates
-            self._add_coordinate_labels(page_canvas, x_start, y_start, tile_w, tile_h)
-            
-            # Save page and add to content
-            page_canvas.save()
-            
-            # In a real implementation, we'd integrate this with ReportLab
-            # For now, we'll add a placeholder
-            styles = getSampleStyleSheet()
-            heading_style = ParagraphStyle(
-                'CustomHeading',
-                parent=styles['Heading1'],
-                fontSize=16
-            )
-            
-            content.append(Paragraph(f"Pattern Page {page_num}", heading_style))
-            content.append(Paragraph(f"Grid section: ({x_start}, {y_start}) to ({x_start+tile_w}, {y_start+tile_h})", styles['Normal']))
-            content.append(Paragraph(f"<i>This page shows {tile_w}×{tile_h} drills with symbols and crop marks for precise alignment.</i>", styles['Normal']))
-            
-            if i < len(self.tiles) - 1:
+            # Add page break except for last page
+            if i < len(tiles) - 1:
                 content.append(PageBreak())
         
         return content
     
-    def _draw_centered_text(self, pdf_canvas, text: str, x: float, y: float):
-        """Draw centered text at specified position."""
-        text_width = pdf_canvas.stringWidth(text, "Helvetica", 8)
-        centered_x = x - text_width / 2
-        pdf_canvas.drawString(centered_x, y, text)
-    
-    def _add_page_header(self, pdf_canvas, title: str):
-        """Add page header with title and page info."""
-        pdf_canvas.setFont("Helvetica-Bold", 14)
-        pdf_canvas.drawString(self.margin_pt, self.page_h - self.margin_pt - 20, title)
-        
-        pdf_canvas.setFont("Helvetica", 10)
-        pdf_canvas.drawString(self.margin_pt, self.page_h - self.margin_pt - 35, 
-                            f"Generated with DiamondKit v1.0.0")
-    
-    def _add_crop_marks(self, pdf_canvas):
-        """Add crop marks and registration marks."""
-        # Crop mark length
-        crop_length = 10 * mm
-        
-        # Top-left
-        pdf_canvas.line(
-            self.margin_pt - crop_length, self.page_h - self.margin_pt,
-            self.margin_pt, self.page_h - self.margin_pt
-        )
-        pdf_canvas.line(
-            self.margin_pt, self.page_h - self.margin_pt,
-            self.margin_pt, self.page_h - self.margin_pt + crop_length
+    def _add_qbrix_page_header(self, pdf_canvas, tile):
+        """Add QBRIX page header with tile information."""
+        pdf_canvas.setFont("Helvetica-Bold", 12)
+        pdf_canvas.drawString(
+            self.margin_pt, 
+            self.page_h - self.margin_pt - 15,
+            f"Assembly Page {tile.page_number} of {tile.total_pages}"
         )
         
-        # Top-right
-        pdf_canvas.line(
-            self.page_w - self.margin_pt, self.page_h - self.margin_pt,
-            self.page_w - self.margin_pt + crop_length, self.page_h - self.margin_pt
-        )
-        pdf_canvas.line(
-            self.page_w - self.margin_pt, self.page_h - self.margin_pt,
-            self.page_w - self.margin_pt, self.page_h - self.margin_pt + crop_length
+        pdf_canvas.setFont("Helvetica", 9)
+        pdf_canvas.drawString(
+            self.margin_pt,
+            self.page_h - self.margin_pt - 30,
+            f"QBRIX Kit - Fixed 7-Color Palette"
         )
         
-        # Bottom-left
-        pdf_canvas.line(
-            self.margin_pt - crop_length, self.margin_pt,
-            self.margin_pt, self.margin_pt
-        )
-        pdf_canvas.line(
-            self.margin_pt, self.margin_pt,
-            self.margin_pt, self.margin_pt - crop_length
-        )
-        
-        # Bottom-right
-        pdf_canvas.line(
-            self.page_w - self.margin_pt, self.margin_pt,
-            self.page_w - self.margin_pt + crop_length, self.margin_pt
-        )
-        pdf_canvas.line(
-            self.page_w - self.margin_pt, self.margin_pt,
-            self.page_w - self.margin_pt, self.margin_pt - crop_length
+        # Tile coordinates
+        coord_text = f"C{tile.x_start+1}-{tile.x_start+tile.tile_cols} : R{tile.y_start+1}-{tile.y_start+tile.tile_rows}"
+        pdf_canvas.drawString(
+            self.page_w - self.margin_pt - pdf_canvas.stringWidth(coord_text, "Helvetica", 9),
+            self.page_h - self.margin_pt - 30,
+            coord_text
         )
     
-    def _draw_grid_pattern(self, pdf_canvas, canvas_grid: CanvasGrid,
-                         x_start: int, y_start: int, tile_w: int, tile_h: int):
-        """Draw the grid pattern with symbols."""
-        # Calculate starting position (centered on page)
-        total_width = tile_w * self.cell_size_pt
-        total_height = tile_h * self.cell_size_pt
+    def _add_qbrix_crop_marks(self, pdf_canvas):
+        """Add QBRIX crop marks and registration crosses."""
+        crop_length = 8 * mm  # 8mm crop marks
+        cross_size = 3 * mm   # 3mm registration crosses
         
-        start_x = (self.page_w - total_width) / 2
-        start_y = (self.page_h - total_height) / 2
+        # Crop marks at corners
+        corners = [
+            (self.margin_pt, self.page_h - self.margin_pt, "tl"),
+            (self.page_w - self.margin_pt, self.page_h - self.margin_pt, "tr"),
+            (self.margin_pt, self.margin_pt, "bl"),
+            (self.page_w - self.margin_pt, self.margin_pt, "br")
+        ]
+        
+        for x, y, corner in corners:
+            if corner in ["tl", "bl"]:  # Left corners
+                pdf_canvas.line(x - crop_length, y, x, y)  # Horizontal
+            else:  # Right corners
+                pdf_canvas.line(x, y, x + crop_length, y)  # Horizontal
+            
+            if corner in ["tl", "tr"]:  # Top corners
+                pdf_canvas.line(x, y, x, y + crop_length)  # Vertical
+            else:  # Bottom corners
+                pdf_canvas.line(x, y, x, y - crop_length)  # Vertical
+        
+        # Registration crosses at quarter points
+        cross_positions = [
+            (self.margin_pt + self.usable_w * 0.25, self.page_h - self.margin_pt - self.usable_h * 0.25),
+            (self.page_w - self.margin_pt - self.usable_w * 0.25, self.page_h - self.margin_pt - self.usable_h * 0.25),
+            (self.margin_pt + self.usable_w * 0.25, self.margin_pt + self.usable_h * 0.25),
+            (self.page_w - self.margin_pt - self.usable_w * 0.25, self.margin_pt + self.usable_h * 0.25),
+        ]
+        
+        for cx, cy in cross_positions:
+            pdf_canvas.setLineWidth(0.5)
+            pdf_canvas.line(cx - cross_size/2, cy, cx + cross_size/2, cy)  # Horizontal
+            pdf_canvas.line(cx, cy - cross_size/2, cx, cy + cross_size/2)  # Vertical
+    
+    def _draw_qbrix_numeric_grid(self, pdf_canvas, grid_map: GridIndexMap, tile):
+        """Draw QBRIX numeric grid with digits 1-7."""
+        # Calculate tile position on page
+        tile_width = tile.tile_cols * self.cell_size_pt
+        tile_height = tile.tile_rows * self.cell_size_pt
+        
+        # Center tile on page
+        start_x = (self.page_w - tile_width) / 2
+        start_y = (self.page_h - tile_height) / 2
+        
+        # Set line width for grid
+        pdf_canvas.setLineWidth(0.3)  # 0.3pt lines for clarity
         
         # Draw grid cells
-        for y in range(tile_h):
-            for x in range(tile_w):
-                # Get cell data
-                grid_x = x_start + x
-                grid_y = y_start + y
+        for y in range(tile.tile_rows):
+            for x in range(tile.tile_cols):
+                # Get grid coordinates
+                grid_x = tile.x_start + x
+                grid_y = tile.y_start + y
                 
-                if (grid_y < canvas_grid.cells_h and grid_x < canvas_grid.cells_w):
-                    cell = canvas_grid.get_cell_at(grid_x, grid_y)
+                if (grid_y < grid_map.grid_specs.rows and grid_x < grid_map.grid_specs.cols):
+                    # Get cluster index and convert to user symbol (1-7)
+                    cluster_idx = grid_map.get_cell_at(grid_x, grid_y)
+                    symbol = str(cluster_idx + 1)  # Convert 0-6 to 1-7
+                    color = grid_map.palette_colors[cluster_idx]
                     
-                    if cell:
-                        # Calculate cell position
-                        cell_x = start_x + x * self.cell_size_pt
-                        cell_y = start_y + (tile_h - 1 - y) * self.cell_size_pt  # Flip Y
-                        
-                        # Draw cell background
-                        pdf_canvas.setFillColor(Color(*[c/255.0 for c in cell.rgb]))
-                        pdf_canvas.rect(cell_x, cell_y, self.cell_size_pt, self.cell_size_pt, fill=1, stroke=1)
-                        
-                        # Draw symbol in center
-                        pdf_canvas.setFillColor(black)
-                        pdf_canvas.setFont("Helvetica", self.cell_size_pt * 0.4)
-                        
-                        text_width = pdf_canvas.stringWidth(cell.symbol, "Helvetica", self.cell_size_pt * 0.4)
-                        text_x = cell_x + (self.cell_size_pt - text_width) / 2
-                        text_y = cell_y + self.cell_size_pt * 0.3
-                        
-                        pdf_canvas.drawString(text_x, text_y, cell.symbol)
+                    # Calculate cell position
+                    cell_x = start_x + x * self.cell_size_pt
+                    cell_y = start_y + (tile.tile_rows - 1 - y) * self.cell_size_pt  # Flip Y for PDF
+                    
+                    # Draw cell background with DMC color
+                    pdf_canvas.setFillColor(Color(*[c/255.0 for c in color.rgb]))
+                    pdf_canvas.rect(cell_x, cell_y, self.cell_size_pt, self.cell_size_pt, 
+                                 fill=1, stroke=1)
+                    
+                    # Draw numeric symbol
+                    pdf_canvas.setFillColor(black)
+                    pdf_canvas.setFont(self.symbol_font, self.symbol_font_size_pt)
+                    
+                    # Center text in cell
+                    text_width = pdf_canvas.stringWidth(symbol, self.symbol_font, self.symbol_font_size_pt)
+                    text_x = cell_x + (self.cell_size_pt - text_width) / 2
+                    text_y = cell_y + self.cell_size_pt * 0.3  # 30% from bottom
+                    
+                    pdf_canvas.drawString(text_x, text_y, symbol)
     
-    def _add_coordinate_labels(self, pdf_canvas, x_start: int, y_start: int,
-                              tile_w: int, tile_h: int):
-        """Add coordinate labels around the grid."""
-        total_width = tile_w * self.cell_size_pt
-        total_height = tile_h * self.cell_size_pt
+    def _add_qbrix_coordinate_labels(self, pdf_canvas, tile):
+        """Add QBRIX coordinate labels around the grid."""
+        # Calculate tile boundaries
+        tile_width = tile.tile_cols * self.cell_size_pt
+        tile_height = tile.tile_rows * self.cell_size_pt
         
-        start_x = (self.page_w - total_width) / 2
-        start_y = (self.page_h - total_height) / 2
+        start_x = (self.page_w - tile_width) / 2
+        start_y = (self.page_h - tile_height) / 2
         
         pdf_canvas.setFont("Helvetica", 8)
         pdf_canvas.setFillColor(black)
         
-        # X-axis labels (top and bottom)
-        for x in range(0, tile_w, 10):  # Label every 10 cells
-            coord = x_start + x
+        # Column labels (top and bottom) - show every 5th column
+        for x in range(0, tile.tile_cols, 5):
+            col_num = tile.x_start + x + 1  # 1-based indexing
             x_pos = start_x + x * self.cell_size_pt + self.cell_size_pt / 2
             
-            # Top
-            self._draw_centered_text(pdf_canvas, str(coord), x_pos, start_y + total_height + 5)
-            # Bottom
-            self._draw_centered_text(pdf_canvas, str(coord), x_pos, start_y - 5)
-        
-        # Y-axis labels (left and right)
-        for y in range(0, tile_h, 10):  # Label every 10 cells
-            coord = y_start + y
-            y_pos = start_y + (tile_h - 1 - y) * self.cell_size_pt + self.cell_size_pt / 2
+            # Top label
+            text_width = pdf_canvas.stringWidth(str(col_num), "Helvetica", 8)
+            pdf_canvas.drawString(x_pos - text_width/2, start_y + tile_height + 3, str(col_num))
             
-            # Left
-            self._draw_centered_text(pdf_canvas, str(coord), start_x - 10, y_pos)
-            # Right
-            self._draw_centered_text(pdf_canvas, str(coord), start_x + total_width + 10, y_pos)
-    
-    def _get_difficulty_description(self, canvas_grid: CanvasGrid) -> str:
-        """Get human-readable difficulty description."""
-        total_cells = canvas_grid.total_cells
-        color_count = len(canvas_grid.dmc_colors)
+            # Bottom label
+            pdf_canvas.drawString(x_pos - text_width/2, start_y - 8, str(col_num))
         
-        if total_cells < 2000 and color_count < 15:
-            return "Beginner - Great for first-time diamond painters"
-        elif total_cells < 5000 and color_count < 25:
-            return "Easy - Perfect for beginners"
-        elif total_cells < 10000 and color_count < 40:
-            return "Medium - Suitable for intermediate crafters"
-        elif total_cells < 20000:
-            return "Challenging - For experienced diamond painters"
-        else:
-            return "Expert - Advanced project for diamond painting enthusiasts"
+        # Row labels (left and right) - show every 5th row
+        for y in range(0, tile.tile_rows, 5):
+            row_num = tile.y_start + y + 1  # 1-based indexing
+            y_pos = start_y + (tile.tile_rows - 1 - y) * self.cell_size_pt + self.cell_size_pt / 2
+            
+            text_width = pdf_canvas.stringWidth(str(row_num), "Helvetica", 8)
+            
+            # Left label
+            pdf_canvas.drawString(start_y - text_width - 5, y_pos, str(row_num))
+            
+            # Right label
+            pdf_canvas.drawString(start_x + tile_width + 5, y_pos, str(row_num))
+    
+    def _add_qbrix_minimap(self, pdf_canvas, grid_map: GridIndexMap, tile):
+        """Add mini-map showing tile position in full grid."""
+        # Mini-map dimensions
+        map_w = 30 * mm
+        map_h = 20 * mm
+        map_x = self.page_w - self.margin_pt - map_w - 5
+        map_y = self.margin_pt + 5
+        
+        # Draw mini-map border
+        pdf_canvas.setLineWidth(0.5)
+        pdf_canvas.rect(map_x, map_y, map_w, map_h, fill=0, stroke=1)
+        
+        # Calculate scale factors
+        scale_x = map_w / grid_map.grid_specs.cols
+        scale_y = map_h / grid_map.grid_specs.rows
+        
+        # Draw current tile highlight
+        tile_x = map_x + tile.x_start * scale_x
+        tile_y = map_y + (grid_map.grid_specs.rows - tile.y_start - tile.tile_rows) * scale_y
+        tile_w = tile.tile_cols * scale_x
+        tile_h = tile.tile_rows * scale_y
+        
+        pdf_canvas.setFillColor(lightgrey)
+        pdf_canvas.rect(tile_x, tile_y, tile_w, tile_h, fill=1, stroke=1)
+        
+        # Add label
+        pdf_canvas.setFont("Helvetica", 7)
+        pdf_canvas.setFillColor(black)
+        pdf_canvas.drawCentredText("Position", map_x + map_w/2, map_y + map_h + 3)
