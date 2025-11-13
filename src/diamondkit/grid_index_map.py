@@ -10,7 +10,8 @@ from dataclasses import dataclass
 from scipy import ndimage
 from skimage.filters import sobel
 
-from .dmc import DMCColor, CIEDE2000, DMCColor
+from .color_math import delta_e2000, lab_to_rgb, rgb_to_lab
+from .dmc import DMCColor
 from .fixed_palettes import get_fixed_palette_colors
 from .print_math import GridSpecs
 
@@ -59,7 +60,9 @@ class ColorQuantizerFixed:
     """Fixed palette quantizer using DeltaE2000 color distance with intelligent dominance control."""
     
     def __init__(self, style_name: str, smoothing_kernel: int = 3,
-                 popart_edge_bias: float = 0.0, popart_edge_threshold: float = 0.25):
+                 popart_edge_bias: float = 0.0, popart_edge_threshold: float = 0.25,
+                 chroma_bias_strength: float = 0.0, chroma_bias_threshold: float = 20.0,
+                 dominance_penalty_strength: float = 0.0, dominance_warning_threshold: float = 0.85):
         """Initialize quantizer for a specific style."""
         self.style_name = style_name
         self.palette_colors = get_fixed_palette_colors(style_name)
@@ -68,8 +71,9 @@ class ColorQuantizerFixed:
             raise ValueError(f"Style {style_name} must have exactly 7 colors, got {len(self.palette_colors)}")
         
         # Pre-compute Lab values for efficiency
-        self.palette_lab = np.array([color.lab for color in self.palette_colors])
+        self.palette_lab = np.array([color.lab for color in self.palette_colors], dtype=np.float64)
         self.dmc_codes = [color.dmc_code for color in self.palette_colors]
+        self.palette_chroma = np.linalg.norm(self.palette_lab[:, 1:], axis=1)
         
         # Identify lightest color for dominance control (works for all palettes)
         self.lightest_color_idx = self._find_lightest_color_index()
@@ -82,6 +86,12 @@ class ColorQuantizerFixed:
         self.smoothing_kernel = smoothing_kernel
         self.popart_edge_bias = max(0.0, popart_edge_bias)
         self.popart_edge_threshold = max(0.0, min(popart_edge_threshold, 1.0))
+        self.chroma_bias_strength = max(0.0, chroma_bias_strength)
+        self.chroma_bias_threshold = max(1.0, chroma_bias_threshold)
+        self.neutral_palette_mask = self.palette_chroma < self.chroma_bias_threshold
+        self.dominance_penalty_strength = max(0.0, dominance_penalty_strength)
+        self.dominance_warning_threshold = max(0.0, min(dominance_warning_threshold, 0.98))
+        self.last_usage_fraction: Optional[np.ndarray] = None
     
     def _find_lightest_color_index(self) -> int:
         """Find index of lightest color (highest L* value) in palette."""
@@ -106,14 +116,25 @@ class ColorQuantizerFixed:
         """
         Quantize image to fixed palette using DeltaE2000 nearest neighbor.
         
+        Stage responsibilities within the overall kit pipeline:
+            1. Receives the Lab grid from ImagePreprocessor (image_is_preprocessed=True)
+               or performs an internal resize when used in isolation.
+            2. Optionally computes an edge map (POPART) so outlines can favor the 310 slot.
+            3. Computes ΔE2000 distances from each cell to the seven palette colors and
+               emits the argmin as the cluster index for GRID_INDEX_MAP.
+            4. Applies a configurable mode filter to suppress isolated speckle while
+               keeping hard edges intact.
+            5. Records palette metadata and a reproducible hash so downstream consumers
+               can verify invariance.
+        
         Args:
-            image_lab: Input image in Lab color space (H, W, 3)
-            grid_specs: Target grid specifications
-            enable_smoothing: Whether to apply spatial smoothing to reduce speckle
-            image_is_preprocessed: Skip internal resizing/preprocessing if True
+            image_lab: Input crop sampled to grid resolution in Lab (rows, cols, 3).
+            grid_specs: Target grid specifications from PrintMathEngine.
+            enable_smoothing: Spatial smoothing flag.
+            image_is_preprocessed: Skip resize/neutral preprocessing when True.
             
         Returns:
-            GridIndexMap with fixed palette assignments
+            GridIndexMap with fixed palette assignments.
         """
         print(f"Quantizing to fixed {self.style_name} palette using DeltaE2000...")
         
@@ -277,86 +298,57 @@ class ColorQuantizerFixed:
     
     def _quantize_pixels_deltae(self, image_lab: np.ndarray,
                                edge_map: Optional[np.ndarray] = None) -> np.ndarray:
-        """Quantize pixels using DeltaE2000 with intelligent dominance control."""
+        """Quantize pixels using vectorised DeltaE2000 with chroma/dominance balancing."""
         h, w = image_lab.shape[:2]
-        grid_data = np.zeros((h, w), dtype=np.uint8)
-        
-        print(f"Calculating DeltaE2000 distances for {h*w:,} pixels...")
-        
-        # Process in chunks for memory efficiency
-        chunk_size = 5000  # Smaller chunks for better control
-        for y in range(0, h, chunk_size):
-            y_end = min(y + chunk_size, h)
-            
-            for x in range(0, w, chunk_size):
-                x_end = min(x + chunk_size, w)
-                
-                # Extract chunk
-                chunk = image_lab[y:y_end, x:x_end]
-                chunk_h, chunk_w = chunk.shape[:2]
-                
-                # Find nearest color for each pixel in chunk
-                for cy in range(chunk_h):
-                    for cx in range(chunk_w):
-                        pixel_lab = chunk[cy, cx]
-                        
-                        # Calculate pure DeltaE2000 to all palette colors
-                        min_distance = float('inf')
-                        best_index = 0
-                        best_luminance_gap = float('inf')
-                        
-                        for i, palette_lab in enumerate(self.palette_lab):
-                            # Pure DeltaE2000 calculation
-                            distance = CIEDE2000.delta_e2000(
-                                tuple(pixel_lab), 
-                                tuple(palette_lab)
-                            )
-                           
-                            # Apply intelligent dominance control
-                            # Works for ALL palettes by targeting the lightest color
-                            if i == self.lightest_color_idx:
-                                # Calculate L* and chroma for this pixel
-                                l_star = pixel_lab[0]
-                                a_star = pixel_lab[1]
-                                b_star = pixel_lab[2]
-                                chroma = np.sqrt(a_star**2 + b_star**2)
-                                
-                                # Penalize lightest color for midtones and shadows
-                                # More aggressive penalty to prevent dominance
-                                if l_star < 90:  # Only allow lightest color in highlights
-                                    distance += 25  # Strong penalty
-                                elif chroma > 12:  # Penalize in colorful areas
-                                    distance += 15
-                                else:
-                                    distance += 5  # Mild penalty even in bright areas
-                           
-                            # Minimal perceptual adjustment for extreme lightness differences
-                            l_diff = abs(pixel_lab[0] - palette_lab[0])
-                            if l_diff > 30:  # Only penalize very extreme differences
-                                distance *= 1.1  # Minimal penalty
-                           
-                            luminance_gap = abs(pixel_lab[0] - palette_lab[0])
-                            
-                            if (
-                                edge_map is not None
-                                and edge_map[y + cy, x + cx]
-                            ):
-                                if self.black_color_idx is not None and i == self.black_color_idx:
-                                    distance -= self.popart_edge_bias
-                                else:
-                                    distance += self.popart_edge_bias * 0.15
-                            
-                            if distance < min_distance - 1e-6:
-                                min_distance = distance
-                                best_index = i
-                                best_luminance_gap = luminance_gap
-                            elif abs(distance - min_distance) <= 0.2 and luminance_gap < best_luminance_gap:
-                                best_index = i
-                                best_luminance_gap = luminance_gap
-                        
-                        grid_data[y + cy, x + cx] = best_index
-        
-        print(f"DeltaE2000 quantization complete with intelligent dominance control")
+        flat_lab = image_lab.reshape(-1, 3).astype(np.float64)
+
+        print(f"Calculating DeltaE2000 distances for {flat_lab.shape[0]:,} pixels...")
+        distances = np.zeros((flat_lab.shape[0], len(self.palette_colors)), dtype=np.float64)
+        for idx, palette_lab in enumerate(self.palette_lab):
+            distances[:, idx] = delta_e2000(flat_lab, palette_lab)
+
+        if self.chroma_bias_strength > 0:
+            pixel_chroma = np.linalg.norm(flat_lab[:, 1:], axis=1)
+            chroma_weight = np.clip(
+                (pixel_chroma - self.chroma_bias_threshold) / self.chroma_bias_threshold,
+                0.0,
+                1.0,
+            )
+            neutral_penalty = self.neutral_palette_mask.astype(np.float64)
+            distances += (
+                chroma_weight[:, None]
+                * neutral_penalty[None, :]
+                * self.chroma_bias_strength
+            )
+
+        if (
+            edge_map is not None
+            and self.popart_edge_bias > 0
+            and self.black_color_idx is not None
+        ):
+            edge_flat = edge_map.reshape(-1).astype(np.float64)
+            if edge_flat.any():
+                distances[:, self.black_color_idx] -= edge_flat * self.popart_edge_bias
+                distances += edge_flat[:, None] * self.popart_edge_bias * 0.12
+
+        assignments = distances.argmin(axis=1)
+        total_pixels = flat_lab.shape[0]
+        counts = np.bincount(assignments, minlength=len(self.palette_colors))
+        usage_fraction = counts / total_pixels
+        self.last_usage_fraction = usage_fraction
+
+        if (
+            self.dominance_penalty_strength > 0
+            and usage_fraction.max() > self.dominance_warning_threshold
+        ):
+            distances += usage_fraction[None, :] * self.dominance_penalty_strength
+            assignments = distances.argmin(axis=1)
+            counts = np.bincount(assignments, minlength=len(self.palette_colors))
+            usage_fraction = counts / total_pixels
+            self.last_usage_fraction = usage_fraction
+
+        grid_data = assignments.reshape(h, w).astype(np.uint8)
+        print("DeltaE2000 quantization complete with chroma/dominance balancing")
         return grid_data
     
     def _apply_spatial_smoothing(self, grid_data: np.ndarray, kernel_size: int) -> np.ndarray:
@@ -446,6 +438,7 @@ class ColorQuantizerFixed:
         """Check for color dominance issues and warn if needed."""
         h, w = grid_data.shape
         total_cells = h * w
+        dominance_threshold_pct = self.dominance_warning_threshold * 100
         
         # Count cells per color
         unique_indices, counts = np.unique(grid_data, return_counts=True)
@@ -453,7 +446,7 @@ class ColorQuantizerFixed:
         # Check for dominance
         for i, count in zip(unique_indices, counts):
             percentage = (count / total_cells) * 100
-            if percentage > 85:  # Lowered threshold from 90% to 85%
+            if percentage > dominance_threshold_pct:
                 dmc_code = self.dmc_codes[i]
                 color_name = self.palette_colors[i].name
                 print(f"[WARN] COLOR DOMINANCE WARNING: {dmc_code} ({color_name}) uses {percentage:.1f}% of cells - detail loss risk!")
@@ -491,7 +484,7 @@ class ColorQuantizerFixed:
         for y in range(h):
             for x in range(w):
                 rgb = tuple(rgb_array[y, x])
-                lab = DMCColor._rgb_to_lab(rgb)
+                lab = self._rgb_to_lab_single(rgb)
                 lab_array[y, x] = lab
         
         return lab_array
@@ -593,10 +586,10 @@ class ColorQuantizerFixed:
                     cluster_idx = grid_map.get_cell_at(x, y)
                     palette_lab = self.palette_lab[cluster_idx]
                     
-                    distance = CIEDE2000.delta_e2000(
-                        tuple(original_lab), 
-                        tuple(palette_lab)
-                    )
+                    distance = float(delta_e2000(
+                        np.array(original_lab, dtype=np.float64),
+                        np.array(palette_lab, dtype=np.float64),
+                    ))
                     distances.append(distance)
         
         if not distances:
@@ -634,7 +627,11 @@ def create_grid_index_map(image_lab: np.ndarray, grid_specs: GridSpecs,
                         smoothing_kernel: int = 3,
                         image_is_preprocessed: bool = False,
                         popart_edge_bias: float = 0.0,
-                        popart_edge_threshold: float = 0.25) -> GridIndexMap:
+                        popart_edge_threshold: float = 0.25,
+                        chroma_bias_strength: float = 0.0,
+                        chroma_bias_threshold: float = 20.0,
+                        dominance_penalty_strength: float = 0.0,
+                        dominance_warning_threshold: float = 0.85) -> GridIndexMap:
     """
     Convenience function to create a grid index map.
     
@@ -655,7 +652,11 @@ def create_grid_index_map(image_lab: np.ndarray, grid_specs: GridSpecs,
         style_name,
         smoothing_kernel=smoothing_kernel,
         popart_edge_bias=popart_edge_bias,
-        popart_edge_threshold=popart_edge_threshold
+        popart_edge_threshold=popart_edge_threshold,
+        chroma_bias_strength=chroma_bias_strength,
+        chroma_bias_threshold=chroma_bias_threshold,
+        dominance_penalty_strength=dominance_penalty_strength,
+        dominance_warning_threshold=dominance_warning_threshold,
     )
     return quantizer.quantize_image_to_grid(
         image_lab,

@@ -73,7 +73,9 @@ class QualityAssessor:
             original_lab: Original image in Lab space (optional, calculated if needed)
             
         Returns:
-            Comprehensive quality metrics
+            Comprehensive quality metrics. The QualityMetrics struct is later surfaced
+            on the PDF title page, written into kit_metadata.json, and used by the CLI
+            to raise warnings about ΔE/SSIM/color-distribution issues.
         """
         print("Assessing diamond painting kit quality...")
         

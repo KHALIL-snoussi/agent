@@ -7,6 +7,7 @@ from typing import List, Tuple, Optional
 from sklearn.cluster import KMeans
 import random
 
+from .color_math import rgb_to_lab
 from .dmc import DMCPalette, DMCColor, get_dmc_palette
 from .config import Config
 
@@ -173,7 +174,7 @@ class ColorQuantizer:
         for color in self.dmc_palette.colors:
             if color.dmc_code not in used_codes:
                 # Calculate distance
-                target_lab = DMCColor._rgb_to_lab(rgb)
+                target_lab = rgb_to_lab(np.array(rgb, dtype=np.float64)).reshape(3)
                 distance = self._calculate_ciede2000(target_lab, color.lab)
                 
                 # Apply skin tone preservation

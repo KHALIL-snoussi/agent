@@ -51,16 +51,24 @@ class DiamondKitGenerator:
     def generate_kit(self, image_path: str, style_name: str, 
                     output_dir: str, crop_rect: Optional[Tuple[float, float, float, float]] = None) -> Dict[str, Any]:
         """
-        Generate complete diamond painting kit.
+        Generate a complete kit by walking the full pipeline.
+        
+        The high-level flow is:
+            1. ImagePreprocessor.process_image() loads/crops/rescales the image and
+               returns RGB+Lab tensors aligned to the printable grid.
+            2. ColorQuantizerFixed (via create_grid_index_map) assigns every cell to one
+               of the 7 palette slots using DeltaE2000 distances.
+            3. QualityAssessor computes SSIM/ΔE statistics and color usage warnings.
+            4. _generate_all_outputs() renders previews, CSV, PDF, and metadata bundles.
         
         Args:
-            image_path: Path to input image
-            style_name: Style name (ORIGINAL, VINTAGE, POPART)
-            output_dir: Output directory for kit files
-            crop_rect: Optional crop rectangle (x, y, w, h) as normalized 0-1
+            image_path: Original RGB asset on disk.
+            style_name: One of the fixed palette identifiers (ORIGINAL/VINTAGE/POPART).
+            output_dir: Destination directory for all outputs.
+            crop_rect: Optional normalized crop rectangle (x, y, w, h).
             
         Returns:
-            Complete kit metadata and results
+            Dictionary with metadata, artifacts, and helper objects for downstream code.
         """
         print(f"Generating {style_name} diamond painting kit...")
         print(f"Input: {image_path}")
@@ -87,10 +95,32 @@ class DiamondKitGenerator:
             image_is_preprocessed=True,
             popart_edge_bias=popart_bias,
             popart_edge_threshold=self.processing_settings.popart_edge_threshold,
+            chroma_bias_strength=self.processing_settings.chroma_bias_strength,
+            chroma_bias_threshold=self.processing_settings.chroma_bias_threshold,
+            dominance_penalty_strength=self.processing_settings.dominance_penalty_strength,
+            dominance_warning_threshold=self.processing_settings.dominance_warning_threshold,
         )
         
         # Generate quantized RGB from grid map
         quantized_rgb = self._grid_to_rgb_visualization(grid_map)
+        
+        # Log color usage snapshot for diagnostics
+        usage_snapshot = self._build_color_usage(grid_map)
+        total_cells = grid_map.grid_specs.total_cells or 1
+        usage_percent = {
+            code: (count / total_cells) * 100.0 for code, count in usage_snapshot.items()
+        }
+        distribution_log = " ".join(f"{code}:{pct:.0f}%" for code, pct in usage_percent.items())
+        if distribution_log:
+            print(f"Color usage snapshot: {distribution_log}")
+        dominant_code = max(usage_snapshot, key=usage_snapshot.get, default=None)
+        if dominant_code:
+            dominant_pct = usage_percent[dominant_code]
+            threshold_pct = self.processing_settings.dominance_warning_threshold * 100
+            if dominant_pct > threshold_pct:
+                print(
+                    f"[WARN] Dominant color {dominant_code} at {dominant_pct:.1f}% exceeds {threshold_pct:.1f}% threshold"
+                )
         
         # Assess quality on the grid-ready crop
         quality_metrics = assess_quality(
@@ -406,9 +436,24 @@ class DiamondKitGenerator:
             "smoothing_enabled": self.processing_settings.smoothing_enabled,
             "popart_edge_bias": self.processing_settings.popart_edge_bias,
             "popart_edge_threshold": self.processing_settings.popart_edge_threshold,
+            "clahe_clip_limit": self.processing_settings.clahe_clip_limit,
+            "clahe_tile_grid": self.processing_settings.clahe_tile_grid,
+            "sharpen_amount": self.processing_settings.sharpen_amount,
+            "sharpen_sigma": self.processing_settings.sharpen_sigma,
+            "chroma_bias_strength": self.processing_settings.chroma_bias_strength,
+            "chroma_bias_threshold": self.processing_settings.chroma_bias_threshold,
+            "dominance_penalty_strength": self.processing_settings.dominance_penalty_strength,
+            "dominance_warning_threshold": self.processing_settings.dominance_warning_threshold,
         }
         
         pattern_pages = len(tiling_map)
+        
+        total_cells = max(1, grid_map.grid_specs.total_cells)
+        color_usage_percent = {
+            code: round((count / total_cells) * 100, 2) for code, count in color_usage.items()
+        }
+        dominant_code = max(color_usage, key=color_usage.get, default=None)
+        dominant_pct = color_usage_percent.get(dominant_code, 0.0) if dominant_code else 0.0
         
         metadata = {
             "paper_mm": [self.print_specs.paper_width_mm, self.print_specs.paper_height_mm],
@@ -433,6 +478,12 @@ class DiamondKitGenerator:
             "crop_rect_norm": preprocess_result.crop_rect_norm,
             "tiling_map": tiling_map,
             "color_usage": color_usage,
+            "color_usage_percent": color_usage_percent,
+            "color_dominance": {
+                "dmc_code": dominant_code,
+                "percentage": dominant_pct,
+                "warning_threshold_pct": round(self.processing_settings.dominance_warning_threshold * 100, 1),
+            },
             "scale_factor": round(scale_factor, 3),
             "quality_warnings": quality_metrics.quality_warnings,
             "quality_risks": quality_metrics.quality_risks,

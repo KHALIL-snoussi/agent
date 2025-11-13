@@ -1,23 +1,23 @@
 dmc,name,r,g,b
 310,Black,0,0,0
-B5200,White,255,255,255
-321,Red,220,20,60
-444,Royal Blue,65,105,225
-700,Bright Green,0,128,0
-797,Orange,255,140,0
-738,Beige,245,245,220
-3371,Dark Brown,101,67,33
-3865,Cream,255,253,208
-801,Coffee Brown,111,78,55
-613,Olive Green,107,142,35
-3033,Mustard,255,215,0
-372,Light Brown,210,180,140
-3790,Dark Gray,105,105,105
-666,Christmas Red,220,20,60
-996,Electric Blue,0,0,255
-915,Hot Orange,255,69,0
-816,Maroon,128,0,0
-817,Christmas Red - Vy,220,20,60
+B5200,Snow White,255,255,255
+321,Very Dark Red,208,18,70
+444,Bright Lemon,252,214,86
+700,Bright Green,64,130,70
+797,Royal Blue,30,64,119
+738,Tan Very Light,236,208,168
+3371,Black Brown,61,41,33
+3865,Winter White,249,247,231
+801,Coffee Brown,134,96,67
+613,Drab Brown,199,190,152
+3033,Mocha Brown,214,193,158
+372,Mustard Light,204,176,131
+3790,Beige Brown Dark,88,73,61
+666,Bright Red,227,29,66
+996,Electric Blue,0,174,201
+915,Plum,153,63,102
+816,Garnet,130,0,0
+817,Coral Red,220,36,85
 818,Beetle Black,115,25,41
 819,Baby Pink,252,182,193
 820,Baroque Pink,252,182,193

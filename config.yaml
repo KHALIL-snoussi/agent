@@ -65,6 +65,14 @@ processing:
   popart:
     edge_bias: 18.0
     edge_threshold: 0.25
+  clahe_clip_limit: 2.4
+  clahe_tile_grid: 8
+  sharpen_amount: 0.35
+  sharpen_sigma: 0.9
+  chroma_bias_strength: 4.0
+  chroma_bias_threshold: 22.0
+  dominance_penalty_strength: 3.5
+  dominance_warning_threshold: 0.85
 
 # Output settings
 output:

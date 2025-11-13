@@ -37,6 +37,14 @@ class ProcessingSettings:
     smoothing_kernel: int = 3
     popart_edge_bias: float = 18.0
     popart_edge_threshold: float = 0.25
+    clahe_clip_limit: float = 2.0
+    clahe_tile_grid: int = 8
+    sharpen_amount: float = 0.3
+    sharpen_sigma: float = 1.0
+    chroma_bias_strength: float = 4.0
+    chroma_bias_threshold: float = 20.0
+    dominance_penalty_strength: float = 3.5
+    dominance_warning_threshold: float = 0.85
 
 
 @dataclass
@@ -109,6 +117,14 @@ def load_processing_settings(config_path: str = "config.yaml") -> ProcessingSett
         popart_edge_threshold=float(
             popart_cfg.get("edge_threshold", settings.popart_edge_threshold)
         ),
+        clahe_clip_limit=float(proc.get("clahe_clip_limit", settings.clahe_clip_limit)),
+        clahe_tile_grid=int(proc.get("clahe_tile_grid", settings.clahe_tile_grid)),
+        sharpen_amount=float(proc.get("sharpen_amount", settings.sharpen_amount)),
+        sharpen_sigma=float(proc.get("sharpen_sigma", settings.sharpen_sigma)),
+        chroma_bias_strength=float(proc.get("chroma_bias_strength", settings.chroma_bias_strength)),
+        chroma_bias_threshold=float(proc.get("chroma_bias_threshold", settings.chroma_bias_threshold)),
+        dominance_penalty_strength=float(proc.get("dominance_penalty_strength", settings.dominance_penalty_strength)),
+        dominance_warning_threshold=float(proc.get("dominance_warning_threshold", settings.dominance_warning_threshold)),
     )
 
 
@@ -125,7 +141,24 @@ class ImagePreprocessor:
         image_path: str,
         crop_rect: Optional[Tuple[float, float, float, float]] = None,
     ) -> PreprocessResult:
-        """Load, crop, enhance, and resize image for quantization."""
+        """
+        Load, crop, enhance, and resize image for quantization.
+        
+        Pipeline overview:
+            - Load the original RGB image honoring EXIF orientation.
+            - Either apply the provided normalized crop_rect or run the saliency/face
+              guided auto-crop that respects the eventual grid aspect ratio.
+            - Resize to a working resolution (long side clamped by config) so exposure,
+              denoise, white balance, CLAHE, and gamma tweaks operate with enough data.
+            - Ask PrintMathEngine for the final grid resolution (<=10k cells) and resample
+              to that exact size using a high-quality filter.
+            - Return both RGB and Lab tensors so the quantizer can operate in Lab while
+              preview/PDF code can re-use the RGB grid.
+        
+        Returns:
+            PreprocessResult carrying every intermediate image plus metadata that gets
+            embedded into kit_metadata.json for traceability.
+        """
 
         original_rgb = self._load_image(image_path)
 
@@ -371,6 +404,26 @@ class ImagePreprocessor:
         )
         rgb = denoised.astype(np.float32) / 255.0
 
+        # Local contrast enhancement on L* with CLAHE to preserve details
+        try:
+            clahe = cv2.createCLAHE(
+                clipLimit=max(0.1, self.settings.clahe_clip_limit),
+                tileGridSize=(
+                    max(2, self.settings.clahe_tile_grid),
+                    max(2, self.settings.clahe_tile_grid),
+                ),
+            )
+            lab = cv2.cvtColor(denoised, cv2.COLOR_RGB2LAB)
+            lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+            clahe_rgb = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+            rgb = clahe_rgb.astype(np.float32) / 255.0
+            adjustments["clahe"] = {
+                "clip_limit": self.settings.clahe_clip_limit,
+                "tile_grid": self.settings.clahe_tile_grid,
+            }
+        except Exception as exc:
+            adjustments["clahe"] = f"disabled ({exc})"
+
         gray = cv2.cvtColor((rgb * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY) / 255.0
         mean_luma = float(np.mean(gray))
         if mean_luma < 0.45:
@@ -383,6 +436,23 @@ class ImagePreprocessor:
 
         if abs(gamma - 1.0) > 1e-3:
             rgb = np.clip(np.power(rgb, 1.0 / gamma), 0.0, 1.0)
+
+        # Mild unsharp mask to keep edges crisp after smoothing/CLAHE
+        if self.settings.sharpen_amount > 0:
+            base = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
+            blur = cv2.GaussianBlur(base, (0, 0), self.settings.sharpen_sigma)
+            sharpened = cv2.addWeighted(
+                base,
+                1.0 + self.settings.sharpen_amount,
+                blur,
+                -self.settings.sharpen_amount,
+                0,
+            )
+            rgb = np.clip(sharpened.astype(np.float32) / 255.0, 0.0, 1.0)
+            adjustments["sharpen"] = {
+                "amount": self.settings.sharpen_amount,
+                "sigma": self.settings.sharpen_sigma,
+            }
 
         adjusted_rgb = np.clip(rgb * 255.0, 0, 255).astype(np.uint8)
         return adjusted_rgb, adjustments
