@@ -332,10 +332,17 @@ class DMCPalette:
 _dmc_palette: Optional[DMCPalette] = None
 
 
-def get_dmc_palette(csv_path: str = "data/dmc.csv") -> DMCPalette:
+def get_dmc_palette(csv_path: str = None) -> DMCPalette:
     """Get global DMC palette instance."""
     global _dmc_palette
     if _dmc_palette is None:
+        if csv_path is None:
+            # Find DMC CSV file relative to project root
+            import os
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            # Go up from src/diamondkit to project root
+            project_root = os.path.dirname(os.path.dirname(current_dir))
+            csv_path = os.path.join(project_root, "data", "dmc.csv")
         _dmc_palette = DMCPalette(csv_path)
     return _dmc_palette
 

@@ -261,16 +261,16 @@ def generate_kit(args: argparse.Namespace) -> bool:
         quality_report = results["quality_report"]
         
         print(f"Output directory: {args.output}")
-        print(f"Style: {metadata['generation_info']['style']}")
+        print(f"Style: {metadata.get('generation_info', {}).get('style', 'N/A')}")
         print(f"Grid size: {grid_specs.cols} × {grid_specs.rows} ({grid_specs.total_cells:,} cells)")
-        print(f"Total pages: {metadata['print_specifications']['total_pages']}")
-        print(f"Grid hash: {metadata['generation_info']['grid_hash']}")
+        print(f"Total pages: {metadata.get('print_specifications', {}).get('total_pages', 'N/A')}")
+        print(f"Grid hash: {metadata.get('generation_info', {}).get('grid_hash', 'N/A')}")
         
         print(f"\nQuality Assessment:")
         print(f"  Overall Quality: {quality_report.get('overall_quality', 'N/A')}")
-        print(f"  ΔE Mean: {metadata['deltaE_stats']['mean']:.2f}")
-        print(f"  ΔE Max: {metadata['deltaE_stats']['max']:.2f}")
-        print(f"  SSIM: {metadata['ssim']:.4f}")
+        print(f"  ΔE Mean: {metadata.get('deltaE_stats', {}).get('mean', 0):.2f}")
+        print(f"  ΔE Max: {metadata.get('deltaE_stats', {}).get('max', 0):.2f}")
+        print(f"  SSIM: {metadata.get('ssim', 0):.4f}")
         
         if metadata.get('warnings'):
             print(f"\nWarnings:")

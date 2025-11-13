@@ -498,10 +498,16 @@ class QBRIXPDFGenerator:
                     cell_x = start_x + x * self.cell_size_pt
                     cell_y = start_y + (tile.tile_rows - 1 - y) * self.cell_size_pt  # Flip Y for PDF
                     
-                    # Draw cell background with DMC color
-                    pdf_canvas.setFillColor(Color(*[c/255.0 for c in color.rgb]))
+                    # Draw cell outline only (no colored background for QBRIX-style numeric grid)
+                    pdf_canvas.setFillColor(white)
                     pdf_canvas.rect(cell_x, cell_y, self.cell_size_pt, self.cell_size_pt, 
-                                 fill=1, stroke=1)
+                                 fill=1, stroke=0)
+                    
+                    # Draw cell border
+                    pdf_canvas.setStrokeColor(black)
+                    pdf_canvas.setLineWidth(0.3)
+                    pdf_canvas.rect(cell_x, cell_y, self.cell_size_pt, self.cell_size_pt, 
+                                 fill=0, stroke=1)
                     
                     # Draw numeric symbol
                     pdf_canvas.setFillColor(black)

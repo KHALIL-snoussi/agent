@@ -134,21 +134,43 @@ class ColorQuantizerFixed:
         # Make a copy to avoid modifying original
         processed = image_lab.copy()
         
-        # Very light contrast enhancement on L channel only
-        # Ensure we work within valid Lab L range (0-100)
-        processed[:, :, 0] = np.clip(processed[:, :, 0] * 1.02, 0, 100)  # L channel only
+        # Improved contrast enhancement on L channel
+        l_channel = processed[:, :, 0]
+        
+        # Apply gentle S-shaped curve for better contrast
+        # Normalize to 0-1 range
+        l_norm = l_channel / 100.0
+        # Apply S-curve for better contrast without harsh clipping
+        l_enhanced = np.where(
+            l_norm < 0.5,
+            0.5 * np.power(2 * l_norm, 1.1),  # Gentle boost for shadows
+            1.0 - 0.5 * np.power(2 * (1 - l_norm), 1.1)  # Gentle boost for highlights
+        )
+        # Very mild gamma correction to avoid washed-out midtones
+        l_enhanced = np.power(l_enhanced, 0.95)
+        
+        # Convert back to 0-100 range and clip
+        processed[:, :, 0] = np.clip(l_enhanced * 100.0, 0, 100)
+        
+        # Very mild color saturation boost (only a and b channels)
+        processed[:, :, 1] *= 1.03  # a channel
+        processed[:, :, 2] *= 1.03  # b channel
         
         return processed
     
     def _quantize_pixels_deltae(self, image_lab: np.ndarray) -> np.ndarray:
-        """Quantize pixels using ΔE2000 nearest neighbor assignment."""
+        """Quantize pixels using improved ΔE2000 assignment with adaptive weighting."""
         h, w = image_lab.shape[:2]
         grid_data = np.zeros((h, w), dtype=np.uint8)
         
         print(f"Calculating ΔE2000 distances for {h*w:,} pixels...")
         
+        # Pre-calculate palette color distributions for better weighting
+        # Focus on L* (lightness) channel as it's most perceptually important
+        l_weights = np.array([1.5, 1.0, 1.0, 1.2, 1.1, 1.0, 1.3])  # Emphasize key colors
+        
         # Process in chunks for memory efficiency
-        chunk_size = 10000
+        chunk_size = 5000  # Smaller chunks for better control
         for y in range(0, h, chunk_size):
             y_end = min(y + chunk_size, h)
             
@@ -164,18 +186,28 @@ class ColorQuantizerFixed:
                     for cx in range(chunk_w):
                         pixel_lab = chunk[cy, cx]
                         
-                        # Calculate ΔE2000 to all palette colors
+                        # Calculate weighted ΔE2000 to all palette colors
                         min_distance = float('inf')
                         best_index = 0
                         
                         for i, palette_lab in enumerate(self.palette_lab):
+                            # Standard ΔE2000 calculation
                             distance = CIEDE2000.delta_e2000(
                                 tuple(pixel_lab), 
                                 tuple(palette_lab)
                             )
                             
-                            if distance < min_distance:
-                                min_distance = distance
+                            # Apply perceptual weighting
+                            # Lightness differences are more perceptible than chroma differences
+                            l_diff = abs(pixel_lab[0] - palette_lab[0])
+                            if l_diff > 20:  # Large lightness difference penalty
+                                distance *= 1.2
+                            
+                            # Apply color-specific weighting
+                            weighted_distance = distance * l_weights[i]
+                            
+                            if weighted_distance < min_distance:
+                                min_distance = weighted_distance
                                 best_index = i
                         
                         grid_data[y + cy, x + cx] = best_index
@@ -188,15 +220,43 @@ class ColorQuantizerFixed:
         # Use median filter with small kernel to reduce isolated pixels
         smoothed = ndimage.median_filter(grid_data, size=3)
         
-        # Only apply smoothing where it doesn't create new colors at edges
-        # Detect edges using Sobel filter
+        # Enhanced edge detection to preserve important details
         edges = sobel(grid_data.astype(float))
-        edge_mask = edges > 0.1
+        edge_mask = edges > 0.05  # Lower threshold for more edge sensitivity
         
-        # Preserve original values at edges, use smoothed elsewhere
-        result = np.where(edge_mask, grid_data, smoothed)
+        # Local variance analysis to identify flat areas vs detailed areas
+        local_var = ndimage.generic_filter(
+            grid_data.astype(float), 
+            lambda x: np.var(x), 
+            size=3
+        )
+        flat_mask = local_var < 0.5  # Areas with low variation
         
-        return result.astype(np.uint8)
+        # Adaptive smoothing: more in flat areas, less near edges
+        # Combine edge mask and flat mask for intelligent smoothing
+        smooth_mask = flat_mask & (~edge_mask)
+        
+        # Apply smoothing only where appropriate
+        result = np.where(smooth_mask, smoothed, grid_data)
+        
+        # Final pass: remove single-pixel noise (pixels surrounded by same color)
+        h, w = grid_data.shape
+        cleaned = result.copy()
+        
+        for y in range(1, h-1):
+            for x in range(1, w-1):
+                # Check 8-connected neighborhood
+                neighbors = [
+                    result[y-1, x-1], result[y-1, x], result[y-1, x+1],
+                    result[y, x-1],                     result[y, x+1],
+                    result[y+1, x-1], result[y+1, x], result[y+1, x+1]
+                ]
+                
+                # If all 8 neighbors are the same and different from center, fix it
+                if len(set(neighbors)) == 1 and neighbors[0] != result[y, x]:
+                    cleaned[y, x] = neighbors[0]
+        
+        return cleaned.astype(np.uint8)
     
     def _lab_to_rgb_image(self, lab_array: np.ndarray) -> np.ndarray:
         """Convert Lab array to RGB image."""

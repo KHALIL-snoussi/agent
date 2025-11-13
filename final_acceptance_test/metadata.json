@@ -22,11 +22,11 @@
     "738"
   ],
   "deltaE_stats": {
-    "mean": 45.26,
-    "max": 58.76,
-    "std": 11.74
+    "mean": 39.32,
+    "max": 59.76,
+    "std": 16.06
   },
-  "ssim": 0.303,
+  "ssim": 0.2792,
   "crop_rect_norm": null,
   "tiling_map": [
     {
@@ -166,15 +166,16 @@
       ]
     }
   ],
-  "grid_index_map_hash": "488ed23a3baf13f1",
+  "grid_index_map_hash": "4327544b19388566",
   "color_usage": {
-    "310": 5622,
-    "B5200": 1338,
-    "321": 3,
-    "797": 669,
-    "738": 2286
+    "310": 6537,
+    "B5200": 1040,
+    "321": 1823,
+    "700": 419,
+    "797": 98,
+    "738": 1
   },
-  "scale_factor": 0.058,
+  "scale_factor": 0.289,
   "print_metrics": {
     "paper_size_mm": [
       210.0,

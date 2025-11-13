@@ -10,23 +10,23 @@
   "grid_rows": 87,
   "total_cells": 9918,
   "pages": 2,
-  "style": "VINTAGE",
+  "style": "ORIGINAL",
   "fixed_palette": true,
   "fixed_palette_dmc": [
-    "3371",
-    "3865",
-    "801",
-    "613",
-    "3033",
-    "372",
-    "3790"
+    "310",
+    "B5200",
+    "321",
+    "444",
+    "700",
+    "797",
+    "738"
   ],
   "deltaE_stats": {
-    "mean": 45.9,
-    "max": 59.14,
-    "std": 12.61
+    "mean": 39.32,
+    "max": 59.76,
+    "std": 16.06
   },
-  "ssim": 0.61,
+  "ssim": 0.2792,
   "crop_rect_norm": null,
   "tiling_map": [
     {
@@ -166,15 +166,16 @@
       ]
     }
   ],
-  "grid_index_map_hash": "d761c1ee5f449630",
+  "grid_index_map_hash": "4327544b19388566",
   "color_usage": {
-    "3371": 745,
-    "3865": 364,
-    "801": 407,
-    "372": 4431,
-    "3790": 3971
+    "310": 6537,
+    "B5200": 1040,
+    "321": 1823,
+    "700": 419,
+    "797": 98,
+    "738": 1
   },
-  "scale_factor": 0.058,
+  "scale_factor": 0.289,
   "print_metrics": {
     "paper_size_mm": [
       210.0,

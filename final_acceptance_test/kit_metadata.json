@@ -1,8 +1,8 @@
 {
   "generation_info": {
     "style": "ORIGINAL",
-    "grid_hash": "488ed23a3baf13f1",
-    "scale_factor": 0.05811763488509074,
+    "grid_hash": "4327544b19388566",
+    "scale_factor": 0.28867513459481287,
     "crop_applied": false
   },
   "grid_specifications": {
@@ -16,23 +16,23 @@
   },
   "quality_assessment": {
     "overall_quality": "NEEDS_IMPROVEMENT",
-    "ssim_score": 0.3030053579837723,
-    "delta_e_mean": 45.260922716335386,
-    "delta_e_max": 58.760675814521285,
+    "ssim_score": 0.27923377870457144,
+    "delta_e_mean": 39.32139025416208,
+    "delta_e_max": 59.75746802813792,
     "warnings": [
-      "Detail loss risk: SSIM 0.303 < 0.75",
-      "Color accuracy risk: \u0394E_max 58.8 > 12.0",
-      "Rare colors detected: 321 (each < 2%)",
+      "Detail loss risk: SSIM 0.279 < 0.75",
+      "Color accuracy risk: \u0394E_max 59.8 > 12.0",
+      "Rare colors detected: 797, 738 (each < 2%)",
       "High tiling overlap: 174 cells covered multiple times",
-      "Rare color: 321 (Red) only 0.0% of grid (3 cells)",
+      "Rare color: 797 (Orange) only 1.0% of grid (98 cells)",
+      "Rare color: 738 (Beige) only 0.0% of grid (1 cells)",
       "Unused color in palette: 444 (Royal Blue)",
-      "Unused color in palette: 700 (Bright Green)"
+      "Significant downscaling: 0.289 (may lose detail)"
     ],
     "risks": [
       "Loss of fine details in quantized result",
       "Some colors may not accurately represent original",
-      "Difficult color management during crafting",
-      "Scale factor too small: 0.058 (minimum 0.1)"
+      "Difficult color management during crafting"
     ]
   },
   "palette_info": {
@@ -48,14 +48,16 @@
       "738"
     ],
     "color_distribution": {
-      "310": 56.684815486993344,
-      "B5200": 13.490623109497882,
-      "321": 0.030248033877797946,
-      "797": 6.745311554748941,
-      "738": 23.049001814882033
+      "310": 65.91046581972172,
+      "B5200": 10.48598507763662,
+      "321": 18.380721919741884,
+      "700": 4.224642064932446,
+      "797": 0.9881024400080661,
+      "738": 0.01008267795926598
     },
     "rare_colors": [
-      "321"
+      "797",
+      "738"
     ]
   },
   "output_files": {
@@ -75,16 +77,15 @@
     "total_pages": 2
   },
   "quality_gates": {
-    "passed": false,
+    "passed": true,
     "warnings": [
       "High tiling overlap: 174 cells covered multiple times",
-      "Rare color: 321 (Red) only 0.0% of grid (3 cells)",
+      "Rare color: 797 (Orange) only 1.0% of grid (98 cells)",
+      "Rare color: 738 (Beige) only 0.0% of grid (1 cells)",
       "Unused color in palette: 444 (Royal Blue)",
-      "Unused color in palette: 700 (Bright Green)"
+      "Significant downscaling: 0.289 (may lose detail)"
     ],
-    "errors": [
-      "Scale factor too small: 0.058 (minimum 0.1)"
-    ],
+    "errors": [],
     "auto_fixes": [],
     "metrics": {
       "palette_size": 7,
@@ -102,6 +103,7 @@
         0,
         1,
         2,
+        4,
         5,
         6
       ],
@@ -123,42 +125,47 @@
       "coverage_complete": true,
       "tiling_efficiency": 0.9827586206896551,
       "cells_per_tile_avg": 5046.0,
-      "unique_colors_used": 5,
+      "unique_colors_used": 6,
       "total_palette_colors": 7,
       "color_usage": {
         "310": {
-          "count": 5622,
-          "percentage": 56.684815486993344,
+          "count": 6537,
+          "percentage": 65.91046581972172,
           "rare": "False"
         },
         "B5200": {
-          "count": 1338,
-          "percentage": 13.490623109497882,
+          "count": 1040,
+          "percentage": 10.48598507763662,
           "rare": "False"
         },
         "321": {
-          "count": 3,
-          "percentage": 0.030248033877797946,
-          "rare": "True"
+          "count": 1823,
+          "percentage": 18.380721919741884,
+          "rare": "False"
+        },
+        "700": {
+          "count": 419,
+          "percentage": 4.224642064932446,
+          "rare": "False"
         },
         "797": {
-          "count": 669,
-          "percentage": 6.745311554748941,
-          "rare": "False"
+          "count": 98,
+          "percentage": 0.9881024400080661,
+          "rare": "True"
         },
         "738": {
-          "count": 2286,
-          "percentage": 23.049001814882033,
-          "rare": "False"
+          "count": 1,
+          "percentage": 0.01008267795926598,
+          "rare": "True"
         }
       },
-      "rare_colors": 1,
-      "color_balance_score": 0.801408869973827,
-      "most_used_percentage": 56.684815486993344,
-      "least_used_percentage": 0.030248033877797946,
-      "scale_factor": 0.05811763488509074,
-      "quality_category": "Very Poor",
-      "detail_retention_estimate": 0.05811763488509074,
+      "rare_colors": 2,
+      "color_balance_score": 0.7710839415886805,
+      "most_used_percentage": 65.91046581972172,
+      "least_used_percentage": 0.01008267795926598,
+      "scale_factor": 0.28867513459481287,
+      "quality_category": "Poor",
+      "detail_retention_estimate": 0.28867513459481287,
       "upscaling_applied": false,
       "significant_downscale": true
     }
