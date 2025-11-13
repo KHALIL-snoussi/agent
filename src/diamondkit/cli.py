@@ -267,10 +267,10 @@ def generate_kit(args: argparse.Namespace) -> bool:
         print(f"Grid hash: {metadata.get('generation_info', {}).get('grid_hash', 'N/A')}")
         
         print(f"\nQuality Assessment:")
-        print(f"  Overall Quality: {quality_report.get('overall_quality', 'N/A')}")
-        print(f"  ΔE Mean: {metadata.get('deltaE_stats', {}).get('mean', 0):.2f}")
-        print(f"  ΔE Max: {metadata.get('deltaE_stats', {}).get('max', 0):.2f}")
-        print(f"  SSIM: {metadata.get('ssim', 0):.4f}")
+        print(f"  Overall Quality: {metadata.get('quality_assessment', {}).get('overall_quality', 'N/A')}")
+        print(f"  ΔE Mean: {metadata.get('quality_assessment', {}).get('delta_e_mean', 0):.2f}")
+        print(f"  ΔE Max: {metadata.get('quality_assessment', {}).get('delta_e_max', 0):.2f}")
+        print(f"  SSIM: {metadata.get('quality_assessment', {}).get('ssim_score', 0):.4f}")
         
         if metadata.get('warnings'):
             print(f"\nWarnings:")

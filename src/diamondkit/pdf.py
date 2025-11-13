@@ -142,8 +142,24 @@ class QBRIXPDFGenerator:
         
         # PROMINENT PREVIEW IMAGE - QBRIX-style
         try:
-            # Convert numpy array to PIL Image
-            pil_preview = Image.fromarray(preview_image)
+            # Convert numpy array to PIL Image if needed
+            if isinstance(preview_image, np.ndarray):
+                # Handle different numpy array formats
+                if preview_image.dtype != np.uint8:
+                    preview_image = np.clip(preview_image * 255, 0, 255).astype(np.uint8)
+                
+                # Ensure RGB format (3 channels)
+                if len(preview_image.shape) == 3 and preview_image.shape[2] == 3:
+                    pil_preview = Image.fromarray(preview_image, mode='RGB')
+                elif len(preview_image.shape) == 2:
+                    # Grayscale to RGB
+                    pil_preview = Image.fromarray(preview_image, mode='L').convert('RGB')
+                else:
+                    # Handle other cases
+                    pil_preview = Image.fromarray(preview_image[:, :, :3], mode='RGB')
+            else:
+                # Assume it's already a PIL Image
+                pil_preview = preview_image
             
             # Calculate optimal preview size (60-70% of usable width)
             max_preview_width = self.usable_w * 0.65
@@ -165,7 +181,7 @@ class QBRIXPDFGenerator:
                               width=preview_width, 
                               height=preview_height)
             
-            # Center the image
+            # Center image
             image_container = KeepTogether([
                 Spacer(1, 5),
                 rl_image,
@@ -277,7 +293,7 @@ class QBRIXPDFGenerator:
         
         # Assembly tips footer
         content.append(Spacer(1, 15))
-        content.append(Paragraph("<b>Quick Start:</b> Follow the color legend (pages 2-3) and use the numeric pattern pages to place diamonds. Match symbols 1-7 to your DMC drills.", normal_style))
+        content.append(Paragraph("<b>Quick Start:</b> Follow the color legend and use the numeric pattern pages to place diamonds. Match symbols 1-7 to your DMC drills.", normal_style))
         
         return content
     

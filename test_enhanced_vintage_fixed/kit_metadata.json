@@ -1,0 +1,166 @@
+{
+  "generation_info": {
+    "style": "VINTAGE",
+    "grid_hash": "48aadb6b856d9d59",
+    "scale_factor": 0.05811763488509074,
+    "crop_applied": false
+  },
+  "grid_specifications": {
+    "dimensions": "114\u00d787",
+    "total_cells": 9918,
+    "cell_size_mm": 2.8,
+    "print_area_mm": [
+      319.2,
+      243.6
+    ]
+  },
+  "quality_assessment": {
+    "overall_quality": "NEEDS_IMPROVEMENT",
+    "ssim_score": 0.5067688347086341,
+    "delta_e_mean": 43.663675558118825,
+    "delta_e_max": 57.8127016608901,
+    "warnings": [
+      "Detail loss risk: SSIM 0.507 < 0.75",
+      "Color accuracy risk: \u0394E_max 57.8 > 12.0",
+      "Rare colors detected: 801 (each < 2%)",
+      "High tiling overlap: 174 cells covered multiple times",
+      "Rare color: 801 (Coffee Brown) only 0.8% of grid (82 cells)",
+      "Unused color in palette: 3865 (Cream)",
+      "Unused color in palette: 613 (Olive Green)"
+    ],
+    "risks": [
+      "Loss of fine details in quantized result",
+      "Some colors may not accurately represent original",
+      "Difficult color management during crafting",
+      "Scale factor too small: 0.058 (minimum 0.1)"
+    ]
+  },
+  "palette_info": {
+    "style_name": "VINTAGE",
+    "total_colors": 7,
+    "dmc_codes": [
+      "3371",
+      "3865",
+      "801",
+      "613",
+      "3033",
+      "372",
+      "3790"
+    ],
+    "color_distribution": {
+      "3371": 2.2786852187941116,
+      "801": 0.8267795926598105,
+      "3033": 69.63097398669088,
+      "372": 23.502722323049003,
+      "3790": 3.7608388788062106
+    },
+    "rare_colors": [
+      "801"
+    ]
+  },
+  "output_files": {
+    "original_preview": "original_preview.jpg",
+    "quantized_preview": "quantized_preview.jpg",
+    "preview_original": "preview_original.jpg",
+    "preview_vintage": "preview_vintage.jpg",
+    "preview_popart": "preview_popart.jpg",
+    "csv_inventory": "inventory.csv",
+    "json_metadata": "metadata.json",
+    "pdf_kit": "diamond_painting_kit.pdf"
+  },
+  "print_specifications": {
+    "paper_size": "A4",
+    "dpi": 600,
+    "margins_mm": 12.0,
+    "total_pages": 2
+  },
+  "quality_gates": {
+    "passed": false,
+    "warnings": [
+      "High tiling overlap: 174 cells covered multiple times",
+      "Rare color: 801 (Coffee Brown) only 0.8% of grid (82 cells)",
+      "Unused color in palette: 3865 (Cream)",
+      "Unused color in palette: 613 (Olive Green)"
+    ],
+    "errors": [
+      "Scale factor too small: 0.058 (minimum 0.1)"
+    ],
+    "auto_fixes": [],
+    "metrics": {
+      "palette_size": 7,
+      "dmc_codes": [
+        "3371",
+        "3865",
+        "801",
+        "613",
+        "3033",
+        "372",
+        "3790"
+      ],
+      "style_matched": "VINTAGE",
+      "cluster_indices": [
+        0,
+        2,
+        4,
+        5,
+        6
+      ],
+      "palette_invariant": true,
+      "total_cells": 9918,
+      "under_limit": true,
+      "cell_utilization": 0.9918,
+      "grid_area_mm2": 77757.12,
+      "cell_size_mm": 2.8,
+      "x_height_mm": 1.204,
+      "stroke_thickness_mm": 0.22399999999999998,
+      "x_height_adequate": true,
+      "stroke_adequate": true,
+      "min_cell_size_for_xheight": 2.7906976744186047,
+      "overlap_cells": 174,
+      "total_tiles": 2,
+      "total_covered_cells": 9918,
+      "total_required_cells": 9918,
+      "coverage_complete": true,
+      "tiling_efficiency": 0.9827586206896551,
+      "cells_per_tile_avg": 5046.0,
+      "unique_colors_used": 5,
+      "total_palette_colors": 7,
+      "color_usage": {
+        "3371": {
+          "count": 226,
+          "percentage": 2.2786852187941116,
+          "rare": "False"
+        },
+        "801": {
+          "count": 82,
+          "percentage": 0.8267795926598105,
+          "rare": "True"
+        },
+        "3033": {
+          "count": 6906,
+          "percentage": 69.63097398669088,
+          "rare": "False"
+        },
+        "372": {
+          "count": 2331,
+          "percentage": 23.502722323049003,
+          "rare": "False"
+        },
+        "3790": {
+          "count": 373,
+          "percentage": 3.7608388788062106,
+          "rare": "False"
+        }
+      },
+      "rare_colors": 1,
+      "color_balance_score": 0.7384327858915382,
+      "most_used_percentage": 69.63097398669088,
+      "least_used_percentage": 0.8267795926598105,
+      "scale_factor": 0.05811763488509074,
+      "quality_category": "Very Poor",
+      "detail_retention_estimate": 0.05811763488509074,
+      "upscaling_applied": false,
+      "significant_downscale": true
+    }
+  }
+}

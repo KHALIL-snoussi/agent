@@ -290,7 +290,7 @@ class DiamondKitGenerator:
         
         # Generate PDF kit (placeholder - will be implemented in pdf.py)
         outputs["pdf_kit"] = self._generate_pdf_kit(
-            grid_map, original_rgb, output_dir, style_name
+            grid_map, original_rgb, output_dir, style_name, quality_metrics, scale_factor
         )
         
         return outputs
@@ -553,8 +553,8 @@ class DiamondKitGenerator:
         return tiling_map
     
     def _generate_pdf_kit(self, grid_map, original_rgb: np.ndarray,
-                         output_dir: str, style_name: str) -> str:
-        """Generate QBRIX PDF kit using the new PDF generator."""
+                         output_dir: str, style_name: str, quality_metrics=None, scale_factor=1.0) -> str:
+        """Generate QBRIX PDF kit using new PDF generator."""
         try:
             from .pdf import QBRIXPDFGenerator
             
@@ -563,17 +563,34 @@ class DiamondKitGenerator:
             pdf_path = os.path.join(output_dir, "diamond_painting_kit.pdf")
             
             # Create metadata for PDF generation
-            metadata = {
-                'filename': os.path.basename(output_dir),
-                'grid_size': f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
-                'total_cells': grid_map.grid_specs.total_cells,
-                'colors_used': len(grid_map.palette_colors),
-                'style': style_name,
-                'deltaE_stats': {},  # Will be filled by quality assessment
-                'ssim': 0.0,  # Will be filled by quality assessment
-                'scale_factor': 1.0,  # Will be filled by quality assessment
-                'warnings': []  # Will be filled by quality gates
-            }
+            if quality_metrics is not None:
+                metadata = {
+                    'filename': os.path.basename(output_dir),
+                    'grid_size': f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
+                    'total_cells': grid_map.grid_specs.total_cells,
+                    'colors_used': len(grid_map.palette_colors),
+                    'style': style_name,
+                    'deltaE_stats': {
+                        'mean': quality_metrics.delta_e_mean,
+                        'max': quality_metrics.delta_e_max,
+                        'std': quality_metrics.delta_e_std
+                    },
+                    'ssim': quality_metrics.ssim_score,
+                    'scale_factor': scale_factor,
+                    'warnings': quality_metrics.quality_warnings
+                }
+            else:
+                metadata = {
+                    'filename': os.path.basename(output_dir),
+                    'grid_size': f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
+                    'total_cells': grid_map.grid_specs.total_cells,
+                    'colors_used': len(grid_map.palette_colors),
+                    'style': style_name,
+                    'deltaE_stats': {'mean': 0.0, 'max': 0.0, 'std': 0.0},
+                    'ssim': 0.0,
+                    'scale_factor': scale_factor,
+                    'warnings': []
+                }
             
             # Generate quantized RGB from grid map
             quantized_rgb = self._grid_to_rgb_visualization(grid_map)

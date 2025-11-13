@@ -1,0 +1,6 @@
+dmc_code,name,hex,cluster_id,drill_count,bag_qty_200pcs,deltaE_mean,deltaE_max
+3371,Dark Brown,#654321,0,226,2,43.66,57.81
+801,Coffee Brown,#6f4e37,2,82,1,43.66,57.81
+3033,Mustard,#ffd700,4,6906,35,43.66,57.81
+372,Light Brown,#d2b48c,5,2331,12,43.66,57.81
+3790,Dark Gray,#696969,6,373,2,43.66,57.81

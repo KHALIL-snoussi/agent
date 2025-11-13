@@ -1,0 +1,6 @@
+dmc_code,name,hex,cluster_id,drill_count,bag_qty_200pcs,deltaE_mean,deltaE_max
+310,Black,#000000,0,241,2,40.32,55.54
+B5200,White,#ffffff,1,9231,47,40.32,55.54
+444,Royal Blue,#4169e1,3,162,1,40.32,55.54
+797,Orange,#ff8c00,5,275,2,40.32,55.54
+738,Beige,#f5f5dc,6,9,1,40.32,55.54

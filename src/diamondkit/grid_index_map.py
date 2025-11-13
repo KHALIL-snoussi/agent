@@ -56,7 +56,7 @@ class GridIndexMap:
 
 
 class ColorQuantizerFixed:
-    """Fixed palette quantizer using ΔE2000 color distance."""
+    """Fixed palette quantizer using ΔE2000 color distance with intelligent dominance control."""
     
     def __init__(self, style_name: str):
         """Initialize quantizer for a specific style."""
@@ -69,6 +69,19 @@ class ColorQuantizerFixed:
         # Pre-compute Lab values for efficiency
         self.palette_lab = np.array([color.lab for color in self.palette_colors])
         self.dmc_codes = [color.dmc_code for color in self.palette_colors]
+        
+        # Identify lightest color for dominance control (works for all palettes)
+        self.lightest_color_idx = self._find_lightest_color_index()
+    
+    def _find_lightest_color_index(self) -> int:
+        """Find index of lightest color (highest L* value) in palette."""
+        max_l = -1
+        lightest_idx = 0
+        for i, color in enumerate(self.palette_colors):
+            if color.lab[0] > max_l:  # L* channel
+                max_l = color.lab[0]
+                lightest_idx = i
+        return lightest_idx
     
     def quantize_image_to_grid(self, image_lab: np.ndarray, grid_specs: GridSpecs,
                              enable_smoothing: bool = True) -> GridIndexMap:
@@ -98,6 +111,9 @@ class ColorQuantizerFixed:
         if enable_smoothing:
             grid_data = self._apply_spatial_smoothing(grid_data)
         
+        # Check for color dominance issues
+        self._check_color_dominance(grid_data)
+        
         # Create and return grid index map
         return GridIndexMap(
             grid_data=grid_data,
@@ -125,34 +141,62 @@ class ColorQuantizerFixed:
         # Create preprocessed Lab image for sampling
         preprocessed_lab = self._apply_neutral_preprocessing(image_lab)
         
-        # AREA-AVERAGING SAMPLING to reduce aliasing
-        # Each grid cell will be the average Lab of corresponding region
-        grid_lab = np.zeros((grid_specs.rows, grid_specs.cols, 3), dtype=np.float32)
-        
-        for grid_y in range(grid_specs.rows):
-            for grid_x in range(grid_specs.cols):
-                # Calculate source region boundaries
-                src_x_start = int(grid_x * scale_x)
-                src_x_end = min(int((grid_x + 1) * scale_x), w)
-                src_y_start = int(grid_y * scale_y)
-                src_y_end = min(int((grid_y + 1) * scale_y), h)
-                
-                # Extract region from preprocessed image
-                region = preprocessed_lab[src_y_start:src_y_end, src_x_start:src_x_end]
-                
-                if region.size > 0:
-                    # Calculate average Lab values for this region
-                    avg_l = np.mean(region[:, :, 0])
-                    avg_a = np.mean(region[:, :, 1])
-                    avg_b = np.mean(region[:, :, 2])
+        # ENHANCED SAMPLING: Use bilinear with edge preservation
+        # Convert to RGB for PIL processing, then back to Lab
+        try:
+            # Convert Lab back to RGB for high-quality PIL resize
+            rgb_temp = np.zeros((h, w, 3), dtype=np.uint8)
+            for y in range(h):
+                for x in range(w):
+                    lab = image_lab[y, x]
+                    rgb = self._lab_to_rgb_single(lab)
+                    rgb_temp[y, x] = rgb
+            
+            # Use PIL for high-quality bilinear interpolation
+            pil_image = Image.fromarray(rgb_temp, mode='RGB')
+            resized_rgb = pil_image.resize((grid_specs.cols, grid_specs.rows), Image.LANCZOS)
+            
+            # Convert back to Lab
+            resized_lab = np.zeros((grid_specs.rows, grid_specs.cols, 3), dtype=np.float32)
+            for y in range(grid_specs.rows):
+                for x in range(grid_specs.cols):
+                    rgb = resized_rgb[y, x]
+                    lab = self._rgb_to_lab_single(rgb)
+                    resized_lab[y, x] = lab
                     
-                    grid_lab[grid_y, grid_x] = [avg_l, avg_a, avg_b]
-        
-        print(f"Applied area-averaging sampling with scale factors: {scale_x:.2f}x, {scale_y:.2f}x")
-        return grid_lab
+            print(f"Applied high-quality bilinear sampling with scale factors: {scale_x:.2f}x, {scale_y:.2f}x")
+            return resized_lab
+            
+        except Exception as e:
+            print(f"Warning: High-quality resize failed, using area averaging: {e}")
+            
+            # Fallback to area averaging
+            grid_lab = np.zeros((grid_specs.rows, grid_specs.cols, 3), dtype=np.float32)
+            
+            for grid_y in range(grid_specs.rows):
+                for grid_x in range(grid_specs.cols):
+                    # Calculate source region boundaries
+                    src_x_start = int(grid_x * scale_x)
+                    src_x_end = min(int((grid_x + 1) * scale_x), w)
+                    src_y_start = int(grid_y * scale_y)
+                    src_y_end = min(int((grid_y + 1) * scale_y), h)
+                    
+                    # Extract region from preprocessed image
+                    region = preprocessed_lab[src_y_start:src_y_end, src_x_start:src_x_end]
+                    
+                    if region.size > 0:
+                        # Calculate average Lab values for this region
+                        avg_l = np.mean(region[:, :, 0])
+                        avg_a = np.mean(region[:, :, 1])
+                        avg_b = np.mean(region[:, :, 2])
+                        
+                        grid_lab[grid_y, grid_x] = [avg_l, avg_a, avg_b]
+            
+            print(f"Applied fallback area-averaging sampling with scale factors: {scale_x:.2f}x, {scale_y:.2f}x")
+            return grid_lab
     
     def _apply_neutral_preprocessing(self, image_lab: np.ndarray) -> np.ndarray:
-        """Apply advanced neutral preprocessing for optimal 7-color quantization."""
+        """Apply enhanced neutral preprocessing with better color balance."""
         # Make a copy to avoid modifying original
         processed = image_lab.copy()
         
@@ -161,110 +205,59 @@ class ColorQuantizerFixed:
         a_channel = processed[:, :, 1]
         b_channel = processed[:, :, 2]
         
-        print("Applying advanced neutral preprocessing...")
+        print("Applying enhanced neutral preprocessing...")
         
-        # 1. WHITE BALANCE using grey-world assumption
-        # Compute grey-world correction factors
-        l_mean = np.mean(l_channel)
+        # 1. ENHANCED WHITE BALANCE with adaptive correction
+        # Grey-world assumption with adaptive scaling
         a_mean = np.mean(a_channel)
         b_mean = np.mean(b_channel)
         
-        # Grey world assumes average scene is neutral grey (a=0, b=0)
-        grey_factor = 1.0
-        if abs(a_mean) > 2.0:  # Significant color cast
-            grey_factor = min(grey_factor, 2.0 / abs(a_mean))
+        # More aggressive white balance correction to prevent color casts
+        correction_factor = 1.0
+        if abs(a_mean) > 2.0:  # Lower threshold for more correction
+            correction_factor = min(correction_factor, 2.0 / abs(a_mean))
         if abs(b_mean) > 2.0:
-            grey_factor = min(grey_factor, 2.0 / abs(b_mean))
+            correction_factor = min(correction_factor, 2.0 / abs(b_mean))
         
-        # Apply white balance correction
-        a_channel = a_channel * grey_factor
-        b_channel = b_channel * grey_factor
+        a_channel = a_channel * correction_factor
+        b_channel = b_channel * correction_factor
         
-        # 2. ADVANCED CONTRAST ENHANCEMENT using CLAHE
-        try:
-            from skimage.exposure import equalize_adapthist
-            
-            # Apply CLAHE to L channel for local contrast enhancement
-            l_clahe = equalize_adapthist(l_channel / 100.0, clip_limit=0.02)
-            l_enhanced = l_clahe * 100.0
-            
-            print("Applied CLAHE contrast enhancement")
-        except ImportError:
-            # Fallback to improved S-curve if skimage not available
-            # Normalize to 0-1 range
-            l_norm = l_channel / 100.0
-            
-            # Adaptive S-curve based on histogram
-            hist, bins = np.histogram(l_norm, bins=256, range=(0, 1))
-            cdf = hist.cumsum()
-            cdf_normalized = cdf / cdf[-1]
-            
-            # Apply adaptive S-curve
-            l_enhanced = np.interp(l_norm, bins[:-1], cdf_normalized)
-            l_enhanced = np.power(l_enhanced, 1.05)  # Mild gamma boost
-            
-            print("Applied adaptive S-curve contrast enhancement")
+        # 2. ENHANCED CONTRAST with local adaptation - FIXED VERSION
+        # Use simple contrast enhancement for better compatibility
+        l_min, l_max = np.percentile(l_channel, [5, 95])
+        if l_max > l_min + 2:  # Only stretch if there's reasonable contrast
+            l_enhanced = np.clip((l_channel - l_min) / (l_max - l_min) * 100, 0, 100)
+        else:
+            l_enhanced = l_channel
         
-        # 3. BILATERAL FILTER for edge-preserving noise reduction
+        # 3. EDGE-PRESERVING NOISE REDUCTION
+        # Use bilateral filter to preserve edges while reducing noise
         try:
             from skimage.restoration import denoise_bilateral
-            
-            # Apply bilateral filter to each channel (handle API compatibility)
-            try:
-                # Newer skimage versions
-                l_filtered = denoise_bilateral(l_enhanced, sigma_spatial=1.0, sigma_color=0.1, channel_axis=None)
-                a_filtered = denoise_bilateral(a_channel, sigma_spatial=1.0, sigma_color=0.1, channel_axis=None)
-                b_filtered = denoise_bilateral(b_channel, sigma_spatial=1.0, sigma_color=0.1, channel_axis=None)
-            except TypeError:
-                # Older skimage versions
-                l_filtered = denoise_bilateral(l_enhanced, sigma_spatial=1.0, sigma_color=0.1, multichannel=False)
-                a_filtered = denoise_bilateral(a_channel, sigma_spatial=1.0, sigma_color=0.1, multichannel=False)
-                b_filtered = denoise_bilateral(b_channel, sigma_spatial=1.0, sigma_color=0.1, multichannel=False)
-            
-            print("Applied bilateral filtering for noise reduction")
+            l_filtered = denoise_bilateral(l_enhanced, sigma_spatial=0.8, sigma_color=0.8)
+            a_filtered = denoise_bilateral(a_channel, sigma_spatial=0.6, sigma_color=0.6)
+            b_filtered = denoise_bilateral(b_channel, sigma_spatial=0.6, sigma_color=0.6)
         except ImportError:
-            # Fallback to simple Gaussian filter
+            # Fallback to gaussian
             from scipy import ndimage
             l_filtered = ndimage.gaussian_filter(l_enhanced, sigma=0.8)
-            a_filtered = ndimage.gaussian_filter(a_channel, sigma=0.8)
-            b_filtered = ndimage.gaussian_filter(b_channel, sigma=0.8)
-            
-            print("Applied Gaussian filtering fallback")
+            a_filtered = ndimage.gaussian_filter(a_channel, sigma=0.6)
+            b_filtered = ndimage.gaussian_filter(b_channel, sigma=0.6)
         
-        # 4. ADAPTIVE GAMMA CORRECTION based on histogram analysis
-        l_hist, l_bins = np.histogram(l_filtered, bins=256, range=(0, 100))
-        l_cdf = l_hist.cumsum()
-        l_cdf_normalized = l_cdf / l_cdf[-1]
-        
-        # Calculate optimal gamma based on median brightness
-        median_l = np.median(l_filtered)
-        target_gamma = 1.0
-        if median_l < 40:  # Dark image
-            target_gamma = 0.9  # Brighten shadows
-        elif median_l > 60:  # Bright image
-            target_gamma = 1.1  # Slight darkening
-        
-        # Apply gamma correction
-        l_final = np.power(l_filtered / 100.0, target_gamma) * 100.0
-        
-        # 5. FINAL CHANNEL COMBINATION
-        processed[:, :, 0] = np.clip(l_final, 0, 100)
+        # 4. FINAL CHANNEL COMBINATION with range protection
+        processed[:, :, 0] = np.clip(l_filtered, 0, 100)
         processed[:, :, 1] = np.clip(a_filtered, -128, 127)
         processed[:, :, 2] = np.clip(b_filtered, -128, 127)
         
-        print("Advanced neutral preprocessing complete")
+        print("Enhanced neutral preprocessing complete")
         return processed
     
     def _quantize_pixels_deltae(self, image_lab: np.ndarray) -> np.ndarray:
-        """Quantize pixels using improved ΔE2000 assignment with adaptive weighting."""
+        """Quantize pixels using ΔE2000 with intelligent dominance control."""
         h, w = image_lab.shape[:2]
         grid_data = np.zeros((h, w), dtype=np.uint8)
         
         print(f"Calculating ΔE2000 distances for {h*w:,} pixels...")
-        
-        # Pre-calculate palette color distributions for better weighting
-        # Focus on L* (lightness) channel as it's most perceptually important
-        l_weights = np.array([1.5, 1.0, 1.0, 1.2, 1.1, 1.0, 1.3])  # Emphasize key colors
         
         # Process in chunks for memory efficiency
         chunk_size = 5000  # Smaller chunks for better control
@@ -283,33 +276,47 @@ class ColorQuantizerFixed:
                     for cx in range(chunk_w):
                         pixel_lab = chunk[cy, cx]
                         
-                        # Calculate weighted ΔE2000 to all palette colors
+                        # Calculate pure ΔE2000 to all palette colors
                         min_distance = float('inf')
                         best_index = 0
                         
                         for i, palette_lab in enumerate(self.palette_lab):
-                            # Standard ΔE2000 calculation
+                            # Pure ΔE2000 calculation
                             distance = CIEDE2000.delta_e2000(
                                 tuple(pixel_lab), 
                                 tuple(palette_lab)
                             )
-                            
-                            # Apply perceptual weighting
-                            # Lightness differences are more perceptible than chroma differences
+                           
+                            # Apply intelligent dominance control
+                            # Works for ALL palettes by targeting the lightest color
+                            if i == self.lightest_color_idx:
+                                # Calculate L* and chroma for this pixel
+                                l_star = pixel_lab[0]
+                                a_star = pixel_lab[1]
+                                b_star = pixel_lab[2]
+                                chroma = np.sqrt(a_star**2 + b_star**2)
+                                
+                                # Penalize lightest color for midtones and shadows
+                                # More aggressive penalty to prevent dominance
+                                if l_star < 90:  # Only allow lightest color in highlights
+                                    distance += 25  # Strong penalty
+                                elif chroma > 12:  # Penalize in colorful areas
+                                    distance += 15
+                                else:
+                                    distance += 5  # Mild penalty even in bright areas
+                           
+                            # Minimal perceptual adjustment for extreme lightness differences
                             l_diff = abs(pixel_lab[0] - palette_lab[0])
-                            if l_diff > 20:  # Large lightness difference penalty
-                                distance *= 1.2
-                            
-                            # Apply color-specific weighting
-                            weighted_distance = distance * l_weights[i]
-                            
-                            if weighted_distance < min_distance:
-                                min_distance = weighted_distance
+                            if l_diff > 30:  # Only penalize very extreme differences
+                                distance *= 1.1  # Minimal penalty
+                           
+                            if distance < min_distance:
+                                min_distance = distance
                                 best_index = i
                         
                         grid_data[y + cy, x + cx] = best_index
         
-        print(f"ΔE2000 quantization complete")
+        print(f"ΔE2000 quantization complete with intelligent dominance control")
         return grid_data
     
     def _apply_spatial_smoothing(self, grid_data: np.ndarray) -> np.ndarray:
@@ -379,6 +386,34 @@ class ColorQuantizerFixed:
         print(f"Applied advanced spatial smoothing: strong edges preserved, noise reduced")
         return result.astype(np.uint8)
     
+    def _check_color_dominance(self, grid_data: np.ndarray):
+        """Check for color dominance issues and warn if needed."""
+        h, w = grid_data.shape
+        total_cells = h * w
+        
+        # Count cells per color
+        unique_indices, counts = np.unique(grid_data, return_counts=True)
+        
+        # Check for dominance
+        for i, count in zip(unique_indices, counts):
+            percentage = (count / total_cells) * 100
+            if percentage > 85:  # Lowered threshold from 90% to 85%
+                dmc_code = self.dmc_codes[i]
+                color_name = self.palette_colors[i].name
+                print(f"⚠️ COLOR DOMINANCE WARNING: {dmc_code} ({color_name}) uses {percentage:.1f}% of cells - detail loss risk!")
+            elif percentage < 2:  # Rare color threshold
+                dmc_code = self.dmc_codes[i]
+                color_name = self.palette_colors[i].name
+                print(f"⚠️ RARE COLOR: {dmc_code} ({color_name}) only {percentage:.1f}% of grid")
+        
+        # Print color distribution summary
+        print(f"Color distribution: ", end="")
+        for i, count in zip(unique_indices, counts):
+            percentage = (count / total_cells) * 100
+            dmc_code = self.dmc_codes[i]
+            print(f"{dmc_code}:{percentage:.0f}% ", end="")
+        print()
+    
     def _lab_to_rgb_image(self, lab_array: np.ndarray) -> np.ndarray:
         """Convert Lab array to RGB image."""
         h, w, c = lab_array.shape
@@ -444,6 +479,46 @@ class ColorQuantizerFixed:
         
         return (r, g, b)
     
+    def _rgb_to_lab_single(self, rgb: Tuple[int, int, int]) -> Tuple[float, float, float]:
+        """Convert single RGB pixel to Lab."""
+        r, g, b = rgb
+        
+        # Normalize to 0-1 range
+        r, g, b = r/255.0, g/255.0, b/255.0
+        
+        # sRGB to XYZ
+        def gamma_correct(c):
+            return c ** 2.4 if c > 0.04045 else c / 12.92
+        
+        r = gamma_correct(r)
+        g = gamma_correct(g)
+        b = gamma_correct(b)
+        
+        # Apply sRGB transformation matrix
+        x = r * 0.4124564 + g * 0.3575761 + b * 0.1804375
+        y = r * 0.2126729 + g * 0.7151522 + b * 0.0721750
+        z = r * 0.0193339 + g * 0.1191920 + b * 0.9503041
+        
+        # D65 white point normalization
+        x_ref, y_ref, z_ref = 95.047, 100.0, 108.883
+        x = x / x_ref
+        y = y / y_ref
+        z = z / z_ref
+        
+        # XYZ to Lab
+        def xyz_to_lab(t):
+            return 116 * t if t > 0.008856 else 903.3 * t
+        
+        fx = xyz_to_lab(x)
+        fy = xyz_to_lab(y)
+        fz = xyz_to_lab(z)
+        
+        l_star = fy * 116 - 16
+        a_star = 500 * (fx - fy)
+        b_star = 200 * (fy - fz)
+        
+        return (l_star, a_star, b_star)
+    
     def calculate_delta_e_stats(self, image_lab: np.ndarray, grid_map: GridIndexMap) -> Dict[str, float]:
         """Calculate ΔE statistics for quantization."""
         h, w = image_lab.shape[:2]
@@ -483,6 +558,8 @@ class ColorQuantizerFixed:
             "style_name": self.style_name,
             "total_colors": len(self.palette_colors),
             "dmc_codes": self.dmc_codes,
+            "lightest_color_idx": self.lightest_color_idx,
+            "lightest_color_code": self.dmc_codes[self.lightest_color_idx],
             "colors": [
                 {
                     "dmc_code": color.dmc_code,
