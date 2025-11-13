@@ -116,46 +116,143 @@ class ColorQuantizerFixed:
         if w == grid_specs.cols and h == grid_specs.rows:
             return image_lab
         
-        # Convert Lab to RGB for PIL resizing (more reliable)
-        rgb_image = self._lab_to_rgb_image(image_lab)
-        pil_image = Image.fromarray(rgb_image)
+        print(f"Resizing image from {w}×{h} to {grid_specs.cols}×{grid_specs.rows} grid...")
         
-        # Resize using LANCZOS for high quality
-        resized_rgb = np.array(pil_image.resize(
-            (grid_specs.cols, grid_specs.rows), 
-            Image.LANCZOS
-        ))
+        # Calculate scaling factors for area sampling
+        scale_x = w / grid_specs.cols
+        scale_y = h / grid_specs.rows
         
-        # Convert back to Lab
-        return self._rgb_image_to_lab(resized_rgb)
+        # Create preprocessed Lab image for sampling
+        preprocessed_lab = self._apply_neutral_preprocessing(image_lab)
+        
+        # AREA-AVERAGING SAMPLING to reduce aliasing
+        # Each grid cell will be the average Lab of corresponding region
+        grid_lab = np.zeros((grid_specs.rows, grid_specs.cols, 3), dtype=np.float32)
+        
+        for grid_y in range(grid_specs.rows):
+            for grid_x in range(grid_specs.cols):
+                # Calculate source region boundaries
+                src_x_start = int(grid_x * scale_x)
+                src_x_end = min(int((grid_x + 1) * scale_x), w)
+                src_y_start = int(grid_y * scale_y)
+                src_y_end = min(int((grid_y + 1) * scale_y), h)
+                
+                # Extract region from preprocessed image
+                region = preprocessed_lab[src_y_start:src_y_end, src_x_start:src_x_end]
+                
+                if region.size > 0:
+                    # Calculate average Lab values for this region
+                    avg_l = np.mean(region[:, :, 0])
+                    avg_a = np.mean(region[:, :, 1])
+                    avg_b = np.mean(region[:, :, 2])
+                    
+                    grid_lab[grid_y, grid_x] = [avg_l, avg_a, avg_b]
+        
+        print(f"Applied area-averaging sampling with scale factors: {scale_x:.2f}x, {scale_y:.2f}x")
+        return grid_lab
     
     def _apply_neutral_preprocessing(self, image_lab: np.ndarray) -> np.ndarray:
-        """Apply neutral preprocessing (light denoise + exposure/contrast fix only)."""
+        """Apply advanced neutral preprocessing for optimal 7-color quantization."""
         # Make a copy to avoid modifying original
         processed = image_lab.copy()
         
-        # Improved contrast enhancement on L channel
+        # Extract channels
         l_channel = processed[:, :, 0]
+        a_channel = processed[:, :, 1]
+        b_channel = processed[:, :, 2]
         
-        # Apply gentle S-shaped curve for better contrast
-        # Normalize to 0-1 range
-        l_norm = l_channel / 100.0
-        # Apply S-curve for better contrast without harsh clipping
-        l_enhanced = np.where(
-            l_norm < 0.5,
-            0.5 * np.power(2 * l_norm, 1.1),  # Gentle boost for shadows
-            1.0 - 0.5 * np.power(2 * (1 - l_norm), 1.1)  # Gentle boost for highlights
-        )
-        # Very mild gamma correction to avoid washed-out midtones
-        l_enhanced = np.power(l_enhanced, 0.95)
+        print("Applying advanced neutral preprocessing...")
         
-        # Convert back to 0-100 range and clip
-        processed[:, :, 0] = np.clip(l_enhanced * 100.0, 0, 100)
+        # 1. WHITE BALANCE using grey-world assumption
+        # Compute grey-world correction factors
+        l_mean = np.mean(l_channel)
+        a_mean = np.mean(a_channel)
+        b_mean = np.mean(b_channel)
         
-        # Very mild color saturation boost (only a and b channels)
-        processed[:, :, 1] *= 1.03  # a channel
-        processed[:, :, 2] *= 1.03  # b channel
+        # Grey world assumes average scene is neutral grey (a=0, b=0)
+        grey_factor = 1.0
+        if abs(a_mean) > 2.0:  # Significant color cast
+            grey_factor = min(grey_factor, 2.0 / abs(a_mean))
+        if abs(b_mean) > 2.0:
+            grey_factor = min(grey_factor, 2.0 / abs(b_mean))
         
+        # Apply white balance correction
+        a_channel = a_channel * grey_factor
+        b_channel = b_channel * grey_factor
+        
+        # 2. ADVANCED CONTRAST ENHANCEMENT using CLAHE
+        try:
+            from skimage.exposure import equalize_adapthist
+            
+            # Apply CLAHE to L channel for local contrast enhancement
+            l_clahe = equalize_adapthist(l_channel / 100.0, clip_limit=0.02)
+            l_enhanced = l_clahe * 100.0
+            
+            print("Applied CLAHE contrast enhancement")
+        except ImportError:
+            # Fallback to improved S-curve if skimage not available
+            # Normalize to 0-1 range
+            l_norm = l_channel / 100.0
+            
+            # Adaptive S-curve based on histogram
+            hist, bins = np.histogram(l_norm, bins=256, range=(0, 1))
+            cdf = hist.cumsum()
+            cdf_normalized = cdf / cdf[-1]
+            
+            # Apply adaptive S-curve
+            l_enhanced = np.interp(l_norm, bins[:-1], cdf_normalized)
+            l_enhanced = np.power(l_enhanced, 1.05)  # Mild gamma boost
+            
+            print("Applied adaptive S-curve contrast enhancement")
+        
+        # 3. BILATERAL FILTER for edge-preserving noise reduction
+        try:
+            from skimage.restoration import denoise_bilateral
+            
+            # Apply bilateral filter to each channel (handle API compatibility)
+            try:
+                # Newer skimage versions
+                l_filtered = denoise_bilateral(l_enhanced, sigma_spatial=1.0, sigma_color=0.1, channel_axis=None)
+                a_filtered = denoise_bilateral(a_channel, sigma_spatial=1.0, sigma_color=0.1, channel_axis=None)
+                b_filtered = denoise_bilateral(b_channel, sigma_spatial=1.0, sigma_color=0.1, channel_axis=None)
+            except TypeError:
+                # Older skimage versions
+                l_filtered = denoise_bilateral(l_enhanced, sigma_spatial=1.0, sigma_color=0.1, multichannel=False)
+                a_filtered = denoise_bilateral(a_channel, sigma_spatial=1.0, sigma_color=0.1, multichannel=False)
+                b_filtered = denoise_bilateral(b_channel, sigma_spatial=1.0, sigma_color=0.1, multichannel=False)
+            
+            print("Applied bilateral filtering for noise reduction")
+        except ImportError:
+            # Fallback to simple Gaussian filter
+            from scipy import ndimage
+            l_filtered = ndimage.gaussian_filter(l_enhanced, sigma=0.8)
+            a_filtered = ndimage.gaussian_filter(a_channel, sigma=0.8)
+            b_filtered = ndimage.gaussian_filter(b_channel, sigma=0.8)
+            
+            print("Applied Gaussian filtering fallback")
+        
+        # 4. ADAPTIVE GAMMA CORRECTION based on histogram analysis
+        l_hist, l_bins = np.histogram(l_filtered, bins=256, range=(0, 100))
+        l_cdf = l_hist.cumsum()
+        l_cdf_normalized = l_cdf / l_cdf[-1]
+        
+        # Calculate optimal gamma based on median brightness
+        median_l = np.median(l_filtered)
+        target_gamma = 1.0
+        if median_l < 40:  # Dark image
+            target_gamma = 0.9  # Brighten shadows
+        elif median_l > 60:  # Bright image
+            target_gamma = 1.1  # Slight darkening
+        
+        # Apply gamma correction
+        l_final = np.power(l_filtered / 100.0, target_gamma) * 100.0
+        
+        # 5. FINAL CHANNEL COMBINATION
+        processed[:, :, 0] = np.clip(l_final, 0, 100)
+        processed[:, :, 1] = np.clip(a_filtered, -128, 127)
+        processed[:, :, 2] = np.clip(b_filtered, -128, 127)
+        
+        print("Advanced neutral preprocessing complete")
         return processed
     
     def _quantize_pixels_deltae(self, image_lab: np.ndarray) -> np.ndarray:
@@ -216,47 +313,71 @@ class ColorQuantizerFixed:
         return grid_data
     
     def _apply_spatial_smoothing(self, grid_data: np.ndarray) -> np.ndarray:
-        """Apply spatial smoothing to reduce speckle while preserving edges."""
-        # Use median filter with small kernel to reduce isolated pixels
-        smoothed = ndimage.median_filter(grid_data, size=3)
-        
-        # Enhanced edge detection to preserve important details
-        edges = sobel(grid_data.astype(float))
-        edge_mask = edges > 0.05  # Lower threshold for more edge sensitivity
-        
-        # Local variance analysis to identify flat areas vs detailed areas
-        local_var = ndimage.generic_filter(
-            grid_data.astype(float), 
-            lambda x: np.var(x), 
-            size=3
-        )
-        flat_mask = local_var < 0.5  # Areas with low variation
-        
-        # Adaptive smoothing: more in flat areas, less near edges
-        # Combine edge mask and flat mask for intelligent smoothing
-        smooth_mask = flat_mask & (~edge_mask)
-        
-        # Apply smoothing only where appropriate
-        result = np.where(smooth_mask, smoothed, grid_data)
-        
-        # Final pass: remove single-pixel noise (pixels surrounded by same color)
+        """Apply advanced spatial smoothing with enhanced edge preservation."""
         h, w = grid_data.shape
-        cleaned = result.copy()
+        print("Applying advanced spatial smoothing...")
         
+        # Multi-stage edge-aware smoothing approach
+        result = grid_data.copy()
+        
+        # STAGE 1: Gradient-based edge detection for better boundary preservation
+        # Calculate gradients in both directions
+        grad_x = np.abs(np.diff(grid_data.astype(float), axis=1, prepend=0))
+        grad_y = np.abs(np.diff(grid_data.astype(float), axis=0, prepend=0))
+        
+        # Pad gradients to match original size
+        grad_x = np.pad(grad_x, ((0, 1)), mode='constant')
+        grad_y = np.pad(grad_y, ((1, 0)), mode='constant')
+        
+        # Combined edge strength (Euclidean gradient magnitude)
+        edge_strength = np.sqrt(grad_x**2 + grad_y**2)
+        strong_edges = edge_strength > 2.0  # Threshold for strong edges
+        
+        # STAGE 2: Context-aware median filtering
+        # Apply 3×3 majority filter for noise reduction
         for y in range(1, h-1):
             for x in range(1, w-1):
-                # Check 8-connected neighborhood
+                if strong_edges[y, x]:  # Skip strong edges entirely
+                    continue
+                
+                # Get 3×3 neighborhood
+                neighborhood = grid_data[max(0, y-1):y+2, max(0, x-1):x+2]
+                
+                # Find majority color in neighborhood
+                unique, counts = np.unique(neighborhood, return_counts=True)
+                if len(unique) > 0:
+                    majority_idx = unique[np.argmax(counts)]
+                    
+                    # Only apply majority if center is isolated and majority is dominant
+                    if (counts[np.argmax(counts)] >= 5 and 
+                        grid_data[y, x] != majority_idx):
+                        result[y, x] = majority_idx
+        
+        # STAGE 3: Edge-preserving final cleanup
+        # Remove single-pixel noise using enhanced detection
+        for y in range(1, h-1):
+            for x in range(1, w-1):
+                center = result[y, x]
+                
+                # Get 8-connected neighborhood after majority filtering
                 neighbors = [
                     result[y-1, x-1], result[y-1, x], result[y-1, x+1],
                     result[y, x-1],                     result[y, x+1],
                     result[y+1, x-1], result[y+1, x], result[y+1, x+1]
                 ]
                 
-                # If all 8 neighbors are the same and different from center, fix it
-                if len(set(neighbors)) == 1 and neighbors[0] != result[y, x]:
-                    cleaned[y, x] = neighbors[0]
+                # Enhanced isolation detection
+                neighbor_set = set(neighbors)
+                center_unique = center not in neighbor_set
+                
+                if (center_unique and len(neighbor_set) >= 7):
+                    # If center is isolated but neighborhood is mostly uniform, fix it
+                    unique_vals, counts = np.unique(neighbors, return_counts=True)
+                    dominant_color = unique_vals[np.argmax(counts)]
+                    result[y, x] = dominant_color
         
-        return cleaned.astype(np.uint8)
+        print(f"Applied advanced spatial smoothing: strong edges preserved, noise reduced")
+        return result.astype(np.uint8)
     
     def _lab_to_rgb_image(self, lab_array: np.ndarray) -> np.ndarray:
         """Convert Lab array to RGB image."""

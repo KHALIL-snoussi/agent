@@ -318,31 +318,136 @@ class DiamondKitGenerator:
         return output_path
     
     def _generate_style_preview(self, grid_map, style_name: str) -> np.ndarray:
-        """Generate style preview overlay (maintains same grid assignments)."""
+        """Generate professional style preview overlay (maintains same grid assignments)."""
         base_rgb = self._grid_to_rgb_visualization(grid_map)
+        h, w = base_rgb.shape[:2]
+        
+        print(f"Generating {style_name} style preview...")
         
         # Apply style-specific overlays (without changing grid assignments)
         if style_name == "ORIGINAL":
-            # Mild contrast enhancement
-            from skimage.exposure import adjust_gamma
-            enhanced = adjust_gamma(base_rgb / 255.0, gamma=1.1)
-            return np.clip(enhanced * 255, 0, 255).astype(np.uint8)
+            # Professional original style with local contrast and subtle dithering
+            try:
+                from skimage.exposure import adjust_gamma, rescale_intensity
+                from skimage.filters import unsharp_mask
+                
+                # Local contrast enhancement via unsharp masking
+                enhanced = unsharp_mask(base_rgb / 255.0, radius=1.0, amount=0.3)
+                
+                # Subtle contrast boost
+                enhanced = adjust_gamma(enhanced, gamma=0.95)
+                
+                # Optional: very subtle ordered dithering to reduce banding
+                # Create dither pattern
+                dither_pattern = np.indices((h, w)).sum(axis=0) % 8 / 8.0
+                dither_pattern = np.dstack([dither_pattern] * 3) * 0.02  # 2% dither strength
+                
+                final = enhanced + dither_pattern
+                final = rescale_intensity(final, in_range=(0, 1), out_range=(0, 1))
+                
+                print("Applied professional ORIGINAL style: local contrast + subtle dithering")
+                return np.clip(final * 255, 0, 255).astype(np.uint8)
+                
+            except ImportError:
+                # Fallback to simple gamma adjustment
+                from skimage.exposure import adjust_gamma
+                enhanced = adjust_gamma(base_rgb / 255.0, gamma=1.1)
+                return np.clip(enhanced * 255, 0, 255).astype(np.uint8)
         
         elif style_name == "VINTAGE":
-            # Sepia/aging overlay
-            sepia_filter = np.array([[0.393, 0.769, 0.189],
-                                   [0.349, 0.686, 0.168],
-                                   [0.272, 0.534, 0.131]])
-            vintage = base_rgb @ sepia_filter.T
-            vintage = np.clip(vintage, 0, 255).astype(np.uint8)
-            return vintage
+            # Professional vintage sepia with aging effects
+            try:
+                from skimage.filters import gaussian
+                
+                # Advanced sepia transformation
+                sepia_filter = np.array([[0.393, 0.769, 0.189],
+                                       [0.349, 0.686, 0.168],
+                                       [0.272, 0.534, 0.131]])
+                
+                vintage = base_rgb @ sepia_filter.T
+                
+                # Add subtle vignette (darkened edges)
+                y, x = np.ogrid[:h, :w]
+                center_y, center_x = h // 2, w // 2
+                
+                # Create vignette mask
+                max_dist = np.sqrt(center_y**2 + center_x**2)
+                y_dist = (y - center_y) / max_dist
+                x_dist = (x - center_x) / max_dist
+                dist_from_center = np.sqrt(y_dist**2 + x_dist**2)
+                
+                # Smooth vignette (darker at edges)
+                vignette = 1.0 - np.clip(dist_from_center * 0.3, 0, 0.4)
+                vignette = np.dstack([vignette] * 3)
+                
+                vintage = vintage * vignette
+                
+                # Add very subtle blur for aged look
+                vintage_blurred = gaussian(vintage.astype(float) / 255.0, sigma=0.3)
+                vintage = vintage * 0.9 + vintage_blurred * 0.1
+                
+                # Reduce saturation for vintage feel
+                vintage = vintage * 0.85
+                
+                print("Applied professional VINTAGE style: sepia + vignette + aging blur")
+                return np.clip(vintage, 0, 255).astype(np.uint8)
+                
+            except ImportError:
+                # Fallback to simple sepia
+                sepia_filter = np.array([[0.393, 0.769, 0.189],
+                                       [0.349, 0.686, 0.168],
+                                       [0.272, 0.534, 0.131]])
+                vintage = base_rgb @ sepia_filter.T
+                return np.clip(vintage, 0, 255).astype(np.uint8)
         
         elif style_name == "POPART":
-            # High contrast with edge enhancement
-            from skimage.filters import sobel
-            edges = sobel(base_rgb.astype(float))
-            edge_enhanced = base_rgb + (edges * 20).astype(np.uint8)
-            return np.clip(edge_enhanced, 0, 255).astype(np.uint8)
+            # Professional popart with edge enhancement and posterization
+            try:
+                from skimage.filters import sobel, roberts
+                from skimage.morphology import disk
+                from skimage.filters import rank
+                
+                # Convert to grayscale for edge detection
+                gray = np.mean(base_rgb, axis=2)
+                
+                # Multiple edge detection methods for robust edge finding
+                edges1 = sobel(gray)
+                edges2 = roberts(gray)
+                edges = np.maximum(edges1, edges2)
+                
+                # Threshold edges and create binary edge map
+                edge_threshold = np.percentile(edges, 85)  # Top 15% strongest edges
+                edge_mask = edges > edge_threshold
+                
+                # Create black outline using DMC 310 (always first in POPART palette)
+                # DMC 310 should be black in POPART palette
+                black_color = base_rgb.min(axis=(0, 1))  # Approximate black
+                
+                # Apply black outlines to RGB image
+                popart = base_rgb.copy()
+                for c in range(3):
+                    popart[:, :, c] = np.where(edge_mask, black_color[c], popart[:, :, c])
+                
+                # Enhance contrast for popart look
+                from skimage.exposure import rescale_intensity
+                popart_enhanced = rescale_intensity(popart, in_range=(0, 255), out_range=(30, 255))
+                
+                # Subtle posterization effect (reduce color levels slightly)
+                levels = 6  # Posterization levels
+                popart_posterized = np.floor(popart_enhanced / (256/levels)) * (256/levels)
+                
+                # Combine enhanced and posterized for artistic effect
+                final_popart = popart_enhanced * 0.7 + popart_posterized * 0.3
+                
+                print("Applied professional POPART style: edge outlines + contrast + posterization")
+                return np.clip(final_popart, 0, 255).astype(np.uint8)
+                
+            except ImportError:
+                # Fallback to simple edge enhancement
+                from skimage.filters import sobel
+                edges = sobel(base_rgb.astype(float))
+                edge_enhanced = base_rgb + (edges * 20).astype(np.uint8)
+                return np.clip(edge_enhanced, 0, 255).astype(np.uint8)
         
         return base_rgb
     

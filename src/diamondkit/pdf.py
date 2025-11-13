@@ -108,63 +108,135 @@ class QBRIXPDFGenerator:
     def _create_qbrix_title_page(self, grid_map: GridIndexMap,
                                preview_image: np.ndarray,
                                metadata: Dict[str, Any]) -> List:
-        """Create QBRIX title page with specifications and quality metrics."""
+        """Create QBRIX title page with prominent preview image and professional layout."""
+        from reportlab.platypus import Image as RLImage
+        
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle(
             'QBRIXTitle',
             parent=styles['Title'],
-            fontSize=28,
-            spaceAfter=30,
+            fontSize=24,
+            spaceAfter=20,
             alignment=1  # Center
         )
         
         heading_style = ParagraphStyle(
             'QBRIXHeading',
             parent=styles['Heading1'],
-            fontSize=16,
-            spaceAfter=12
+            fontSize=14,
+            spaceAfter=8
         )
         
-        normal_style = styles['Normal']
+        normal_style = ParagraphStyle(
+            'QBRIXNormal',
+            parent=styles['Normal'],
+            fontSize=10,
+            spaceAfter=6
+        )
         
         content = []
         
         # Main title
         content.append(Paragraph("QBRIX DIAMOND PAINTING KIT", title_style))
-        content.append(Spacer(1, 20))
+        content.append(Spacer(1, 10))
         
-        # Style and palette info
-        content.append(Paragraph(f"Style: {grid_map.style_name}", heading_style))
-        content.append(Paragraph("Fixed 7-Color DMC Palette", normal_style))
-        content.append(Spacer(1, 15))
+        # PROMINENT PREVIEW IMAGE - QBRIX-style
+        try:
+            # Convert numpy array to PIL Image
+            pil_preview = Image.fromarray(preview_image)
+            
+            # Calculate optimal preview size (60-70% of usable width)
+            max_preview_width = self.usable_w * 0.65
+            max_preview_height = self.usable_h * 0.35
+            
+            # Maintain aspect ratio
+            img_aspect = pil_preview.width / pil_preview.height
+            if max_preview_width / max_preview_height > img_aspect:
+                # Height limited
+                preview_height = max_preview_height
+                preview_width = preview_height * img_aspect
+            else:
+                # Width limited
+                preview_width = max_preview_width
+                preview_height = preview_width / img_aspect
+            
+            # Convert to ReportLab Image
+            rl_image = RLImage(pil_preview, 
+                              width=preview_width, 
+                              height=preview_height)
+            
+            # Center the image
+            image_container = KeepTogether([
+                Spacer(1, 5),
+                rl_image,
+                Spacer(1, 15)
+            ])
+            
+            content.append(image_container)
+            print(f"Added prominent preview image: {preview_width:.0f}×{preview_height:.0f} points")
+            
+        except Exception as e:
+            print(f"Warning: Could not add preview image to title page: {e}")
+            content.append(Spacer(1, 20))
         
-        # Specifications table
-        specs_data = [
+        # Style and palette info (below preview)
+        content.append(Paragraph(f"<b>Style:</b> {grid_map.style_name.upper()} | <b>Fixed 7-Color DMC Palette</b>", heading_style))
+        content.append(Spacer(1, 10))
+        
+        # COMPACT SPECIFICATIONS TABLE - Two columns for better layout
+        specs_left = [
             ['Specification', 'Value'],
-            ['Grid Dimensions', f"{grid_map.grid_specs.cols} × {grid_map.grid_specs.rows}"],
+            ['Grid Size', f"{grid_map.grid_specs.cols} × {grid_map.grid_specs.rows}"],
             ['Total Cells', f"{grid_map.grid_specs.total_cells:,}"],
             ['Cell Size', f"{self.cell_size_mm:.1f} mm"],
             ['Print DPI', f"{self.dpi}"],
-            ['Paper Size', 'A4 Landscape'],
+            ['Paper Size', 'A4 Landscape']
+        ]
+        
+        specs_right = [
+            ['Specification', 'Value'],
             ['Margins', f"{self.margin_mm:.0f} mm"],
-            ['Total Pages', f"{len(self.print_engine.calculate_tiling(grid_map.grid_specs)) + 3}"],  # +3 for title/legend/instructions
+            ['Total Pages', f"{len(self.print_engine.calculate_tiling(grid_map.grid_specs)) + 3}"],
+            ['Colors Used', f"{len(np.unique(grid_map.grid_data))}/7"],
+            ['Symbol Size', f"{self.x_height_mm:.2f}mm x-height"],
             ['Grid Hash', f"{grid_map.grid_hash}"]
         ]
         
-        specs_table = Table(specs_data, colWidths=[60*mm, 80*mm])
-        specs_table.setStyle(TableStyle([
+        # Create two-column table layout
+        specs_left_table = Table(specs_left, colWidths=[50*mm, 60*mm])
+        specs_left_table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), lightgrey),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
             ('GRID', (0, 0), (-1, -1), 1, black),
-            ('FONTSIZE', (0, 0), (-1, -1), 10),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
         ]))
         
-        content.append(specs_table)
-        content.append(Spacer(1, 20))
+        specs_right_table = Table(specs_right, colWidths=[50*mm, 60*mm])
+        specs_right_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), lightgrey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (-1, -1), 'LEFT'),
+            ('GRID', (0, 0), (-1, -1), 1, black),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
         
-        # Quality metrics
+        # Combine tables side by side
+        combined_specs_data = [
+            [specs_left_table, specs_right_table]
+        ]
+        combined_specs_table = Table(combined_specs_data, colWidths=[120*mm, 120*mm])
+        combined_specs_table.setStyle(TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+        ]))
+        
+        content.append(combined_specs_table)
+        content.append(Spacer(1, 15))
+        
+        # Quality metrics section
         content.append(Paragraph("Quality Assessment", heading_style))
         
         deltaE_mean = metadata.get('deltaE_stats', {}).get('mean', 'N/A')
@@ -172,22 +244,40 @@ class QBRIXPDFGenerator:
         ssim = metadata.get('ssim', 'N/A')
         scale_factor = metadata.get('scale_factor', 1.0)
         
-        quality_text = f"""
-        <b>ΔE2000 Color Accuracy:</b> Mean: {deltaE_mean}, 
-        Max: {deltaE_max}<br/>
-        <b>Structural Similarity (SSIM):</b> {ssim}<br/>
-        <b>Scale Factor:</b> {scale_factor}
-        """
+        quality_data = [
+            ['Metric', 'Value', 'Status'],
+            ['ΔE2000 Mean', f"{deltaE_mean}" if deltaE_mean != 'N/A' else 'N/A', 
+             '✓ Good' if isinstance(deltaE_mean, (int, float)) and deltaE_mean < 40 else '⚠ Check'],
+            ['ΔE2000 Max', f"{deltaE_max}" if deltaE_max != 'N/A' else 'N/A',
+             '✓ Good' if isinstance(deltaE_max, (int, float)) and deltaE_max < 60 else '⚠ Check'],
+            ['SSIM Score', f"{ssim}" if ssim != 'N/A' else 'N/A',
+             '✓ Good' if isinstance(ssim, (int, float)) and ssim > 0.6 else '⚠ Check'],
+            ['Scale Factor', f"{scale_factor:.2f}" if scale_factor != 1.0 else '1.00', 'Normal']
+        ]
         
-        content.append(Paragraph(quality_text, normal_style))
+        quality_table = Table(quality_data, colWidths=[40*mm, 40*mm, 35*mm])
+        quality_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), lightgrey),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('GRID', (0, 0), (-1, -1), 1, black),
+            ('FONTSIZE', (0, 0), (-1, -1), 9),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ]))
         
-        # Warnings
+        content.append(quality_table)
+        
+        # Warnings section (if any)
         warnings = metadata.get('warnings', [])
         if warnings:
             content.append(Spacer(1, 10))
-            content.append(Paragraph("Quality Warnings", heading_style))
-            for warning in warnings:
-                content.append(Paragraph(f"⚠ {warning}", normal_style))
+            content.append(Paragraph("⚠ Quality Warnings", heading_style))
+            for warning in warnings[:3]:  # Limit to first 3 warnings
+                content.append(Paragraph(f"• {warning}", normal_style))
+        
+        # Assembly tips footer
+        content.append(Spacer(1, 15))
+        content.append(Paragraph("<b>Quick Start:</b> Follow the color legend (pages 2-3) and use the numeric pattern pages to place diamonds. Match symbols 1-7 to your DMC drills.", normal_style))
         
         return content
     
