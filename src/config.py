@@ -50,10 +50,10 @@ class SymbolsConfig:
 
 # Enhanced symbol sets for better readability
 ENHANCED_SYMBOL_SETS = {
-    "high_contrast": ["●", "■", "▲", "◆", "★", "✦", "♥"],
-    "geometric": ["●", "■", "▲", "◆", "★", "✦", "⬟"],
+    "high_contrast": ["*", "#", "^", "*", "*", "*", "<3"],
+    "geometric": ["*", "#", "^", "*", "*", "*", "[]"],
     "alphanumeric": ["A", "B", "C", "D", "E", "F", "G"],
-    "mixed": ["●", "■", "▲", "◆", "★", "✦", "♥"]
+    "mixed": ["*", "#", "^", "*", "*", "*", "<3"]
 }
 
 

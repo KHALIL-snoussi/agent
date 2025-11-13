@@ -75,7 +75,7 @@ class ImageProcessor:
     def _calculate_target_resolution(self) -> Tuple[int, int]:
         """
         Calculate target resolution based on drill size and canvas dimensions.
-        For 30×40 cm canvas with 2.5mm drills:
+        For 30x40 cm canvas with 2.5mm drills:
         - Width: 300mm / 2.5mm = 120 drills
         - Height: 400mm / 2.5mm = 160 drills
         """

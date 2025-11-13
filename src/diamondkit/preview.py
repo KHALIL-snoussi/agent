@@ -45,7 +45,7 @@ class PreviewGenerator:
         # Combine into single preview
         preview = self._combine_previews(mosaic, legend)
         
-        print(f"Preview generated: {preview.shape[1]}×{preview.shape[0]} pixels")
+        print(f"Preview generated: {preview.shape[1]}x{preview.shape[0]} pixels")
         return preview
     
     def _create_mosaic_preview(self, lab_image: np.ndarray,

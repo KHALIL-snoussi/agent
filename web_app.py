@@ -84,7 +84,7 @@ def get_image_info(image_path: str) -> Dict[str, Any]:
 def generate_commercial_kit(image_path: str, style_name: str, config_overrides: Dict[str, Any]) -> Dict[str, Any]:
     """Generate commercial diamond painting kit from image."""
     try:
-        print("🎨 Starting commercial diamond painting kit generation...")
+        print("[kit] Starting commercial diamond painting kit generation...")
         
         # Create output directory
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -116,7 +116,7 @@ def generate_commercial_kit(image_path: str, style_name: str, config_overrides: 
                 'success': True,
                 'output_dir': output_dir,
                 'style': style_name,
-                'grid_size': f"{grid_specs.cols}×{grid_specs.rows}",
+                'grid_size': f"{grid_specs.cols}x{grid_specs.rows}",
                 'total_drills': grid_specs.total_cells,
                 'total_pages': metadata['print_specifications']['total_pages'],
                 'quality': quality_report['summary']['overall_quality'],
@@ -127,11 +127,11 @@ def generate_commercial_kit(image_path: str, style_name: str, config_overrides: 
                 'quantized_path': result['outputs']['quantized_preview'],
                 'pdf_path': result['outputs']['pdf_kit'],
                 'csv_path': result['outputs']['csv_inventory'],
-                'json_path': result['outputs']['json_metadata'],
+                'metadata_path': result['outputs'].get('kit_metadata') or result['outputs'].get('json_metadata'),
                 'style_previews': {
-                    'original': result['outputs'].get('preview_original'),
-                    'vintage': result['outputs'].get('preview_vintage'),
-                    'popart': result['outputs'].get('preview_popart')
+                    'original': result['outputs'].get('original_style_preview'),
+                    'vintage': result['outputs'].get('vintage_style_preview'),
+                    'popart': result['outputs'].get('popart_style_preview')
                 },
                 'palette_info': metadata['palette_info'],
                 'warnings': quality_report['quality_gates']['warnings'],
@@ -198,11 +198,13 @@ def upload_file():
             # Load color usage from JSON metadata file
             color_usage = {}
             try:
-                with open(result['json_path'], 'r') as f:
-                    json_data = json.load(f)
-                    color_usage = json_data.get('color_usage', {})
+                metadata_path = result.get('metadata_path')
+                if metadata_path and os.path.exists(metadata_path):
+                    with open(metadata_path, 'r', encoding='utf-8') as f:
+                        json_data = json.load(f)
+                        color_usage = json_data.get('color_usage', {})
             except Exception as e:
-                print(f"Warning: Could not load color usage from JSON: {e}")
+                print(f"Warning: Could not load color usage from metadata: {e}")
             
             # Add DMC colors to the result
             result['dmc_colors'] = [
@@ -217,7 +219,7 @@ def upload_file():
             # Extract filenames from paths
             result['pdf_filename'] = os.path.basename(result['pdf_path'])
             result['csv_filename'] = os.path.basename(result['csv_path'])
-            result['json_filename'] = os.path.basename(result['json_path'])
+            result['metadata_filename'] = os.path.basename(result['metadata_path']) if result.get('metadata_path') else None
             result['preview_filename'] = os.path.basename(result['preview_path'])
             result['quantized_filename'] = os.path.basename(result['quantized_path'])
             
@@ -295,7 +297,7 @@ def too_large(e):
     return redirect(url_for('index'))
 
 if __name__ == '__main__':
-    print("🎨 Commercial Diamond Painting Kit Generator - Web Interface")
+    print("[kit] Commercial Diamond Painting Kit Generator - Web Interface")
     print("=" * 60)
     print("Starting web server...")
     print("Open your browser and go to: http://localhost:5000")

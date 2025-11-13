@@ -48,13 +48,13 @@ def generate(input_image, output_pdf, config, style, save_intermediate, palette_
         
         # Run quality check if requested
         if quality_check:
-            click.echo("🔍 Running quality assessment...")
+            click.echo("[search] Running quality assessment...")
             quality_result = generator.assess_image_quality(input_image)
             report = generator.quality_assessor.generate_quality_report(quality_result)
             click.echo(report)
             
             if quality_result.level.value == "Low":
-                if not click.confirm("⚠️  Image quality is low. Continue anyway?"):
+                if not click.confirm("[WARN]  Image quality is low. Continue anyway?"):
                     click.echo("Processing cancelled.")
                     return
         
@@ -66,20 +66,20 @@ def generate(input_image, output_pdf, config, style, save_intermediate, palette_
         output_path.parent.mkdir(parents=True, exist_ok=True)
         
         # Generate the kit
-        click.echo(f"🎨 Generating paint-by-numbers kit...")
+        click.echo(f"[kit] Generating paint-by-numbers kit...")
         if style:
-            click.echo(f"📋 Using style preset: {style}")
+            click.echo(f"[clipboard] Using style preset: {style}")
         
         retrieval_code = generator.generate_kit(input_image, output_pdf, save_intermediate)
         
         if retrieval_code:
-            click.echo(f"🔑 Retrieval code: {retrieval_code}")
-            click.echo("💾 Keep this code safe to reprint your kit anytime!")
+            click.echo(f"[key] Retrieval code: {retrieval_code}")
+            click.echo("[save] Keep this code safe to reprint your kit anytime!")
         
-        click.echo(f"✅ Kit generated successfully: {output_pdf}")
+        click.echo(f"[OK] Kit generated successfully: {output_pdf}")
         
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"[X] Error: {e}", err=True)
         sys.exit(1)
 
 
@@ -91,7 +91,7 @@ def palette(config):
         generator = PaintGenerator(config)
         generator.get_palette_info()
     except Exception as e:
-        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"[X] Error: {e}", err=True)
         sys.exit(1)
 
 
@@ -103,9 +103,9 @@ def validate(input_image, config):
     try:
         generator = PaintGenerator(config)
         if generator.validate_image(input_image):
-            click.echo("✅ Image is valid for processing")
+            click.echo("[OK] Image is valid for processing")
     except Exception as e:
-        click.echo(f"❌ Validation failed: {e}", err=True)
+        click.echo(f"[X] Validation failed: {e}", err=True)
         sys.exit(1)
 
 
@@ -173,7 +173,7 @@ pdf:
 # Symbol settings
 symbols:
   # High-contrast symbols for grid
-  symbol_set: ["●", "■", "▲", "◆", "★", "✦", "●"]
+  symbol_set: ["*", "#", "^", "*", "*", "*", "*"]
   font_size: 8  # Symbol font size in points
   min_contrast_ratio: 4.5  # Minimum contrast ratio for readability
 
@@ -188,10 +188,10 @@ output:
         with open(output, 'w') as f:
             f.write(default_config)
         
-        click.echo(f"✅ Default configuration created: {output}")
+        click.echo(f"[OK] Default configuration created: {output}")
         
     except Exception as e:
-        click.echo(f"❌ Error creating configuration: {e}", err=True)
+        click.echo(f"[X] Error creating configuration: {e}", err=True)
         sys.exit(1)
 
 
@@ -208,11 +208,11 @@ def demo():
         generator = PaintGenerator()
         generator.generate_kit(demo_image_path, output_path, save_intermediate=True)
         
-        click.echo(f"✅ Demo kit created: {output_path}")
-        click.echo(f"📁 Demo image: {demo_image_path}")
+        click.echo(f"[OK] Demo kit created: {output_path}")
+        click.echo(f"[folder] Demo image: {demo_image_path}")
         
     except Exception as e:
-        click.echo(f"❌ Error creating demo: {e}", err=True)
+        click.echo(f"[X] Error creating demo: {e}", err=True)
         sys.exit(1)
 
 

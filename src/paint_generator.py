@@ -95,7 +95,7 @@ class PaintGenerator:
         # Update manifest with PDF path
         self.manifest_manager.update_manifest_pdf_path(retrieval_code, output_pdf_path)
         
-        print(f"✅ Kit generated successfully: {output_pdf_path}")
+        print(f"[OK] Kit generated successfully: {output_pdf_path}")
         return retrieval_code
     
     def _save_intermediate_image(self, image: np.ndarray, output_path: str, suffix: str):
@@ -116,7 +116,7 @@ class PaintGenerator:
         print("\n" + "="*50)
         print("PROCESSING STATISTICS")
         print("="*50)
-        print(f"Image size: {image_shape[1]} × {image_shape[0]} drills")
+        print(f"Image size: {image_shape[1]} x {image_shape[0]} drills")
         print(f"Total cells: {total_cells:,}")
         print(f"Colors used: {len(self.config.palette)}")
         print(f"Spare percentage: {int(self.config.output.spare_percentage * 100)}%")
@@ -163,12 +163,12 @@ class PaintGenerator:
             with Image.open(image_path) as img:
                 # Check minimum size
                 if img.size[0] < 100 or img.size[1] < 100:
-                    raise ValueError("Image too small. Minimum size: 100×100 pixels")
+                    raise ValueError("Image too small. Minimum size: 100x100 pixels")
                 
                 # Check if image has sufficient resolution
                 target_resolution = self.image_processor._calculate_target_resolution()
                 if img.size[0] < target_resolution[0] or img.size[1] < target_resolution[1]:
-                    print(f"⚠️  Warning: Input image ({img.size[0]}×{img.size[1]}) is smaller than target resolution ({target_resolution[0]}×{target_resolution[1]}). Quality may be reduced.")
+                    print(f"[WARN]  Warning: Input image ({img.size[0]}x{img.size[1]}) is smaller than target resolution ({target_resolution[0]}x{target_resolution[1]}). Quality may be reduced.")
         
         except Exception as e:
             raise ValueError(f"Cannot process image: {e}")

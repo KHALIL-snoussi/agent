@@ -144,7 +144,7 @@ class QualityGates:
         )
     
     def validate_cell_cap(self, grid_specs: GridSpecs) -> QualityGateResult:
-        """Validate that total cells ≤ 10,000."""
+        """Validate that total cells <= 10,000."""
         warnings = []
         errors = []
         auto_fixes = []
@@ -162,7 +162,7 @@ class QualityGates:
             suggested_total = suggested_cols * suggested_rows
             
             auto_fixes.append(
-                f"Auto-fix available: scale to {suggested_cols}×{suggested_rows} "
+                f"Auto-fix available: scale to {suggested_cols}x{suggested_rows} "
                 f"({suggested_total:,} cells, {scale_factor:.3f}x scale)"
             )
         elif total_cells < 1000:
@@ -183,7 +183,7 @@ class QualityGates:
         )
     
     def validate_symbol_legibility(self) -> QualityGateResult:
-        """Validate symbol legibility requirements (x-height ≥ 1.2mm, stroke ≥ 0.15mm)."""
+        """Validate symbol legibility requirements (x-height >= 1.2mm, stroke >= 0.15mm)."""
         warnings = []
         errors = []
         auto_fixes = []
@@ -193,7 +193,7 @@ class QualityGates:
         
         # Calculate minimum cell size for 1.2mm x-height
         # For bold digits 1-7, x-height is ~43% of cell height
-        min_cell_for_xheight = 1.2 / 0.43  # ≈ 2.79mm
+        min_cell_for_xheight = 1.2 / 0.43  # approx 2.79mm
         
         if cell_size_mm < min_cell_for_xheight:
             errors.append(
@@ -402,9 +402,9 @@ class QualityGates:
         
         # Overall status
         if result.passed:
-            lines.append("✓ ALL QUALITY GATES PASSED")
+            lines.append("[OK] ALL QUALITY GATES PASSED")
         else:
-            lines.append("✗ QUALITY GATES FAILED")
+            lines.append("[X] QUALITY GATES FAILED")
         
         lines.append("")
         
@@ -412,21 +412,21 @@ class QualityGates:
         if result.warnings:
             lines.append("WARNINGS:")
             for warning in result.warnings:
-                lines.append(f"  ⚠ {warning}")
+                lines.append(f"  [WARN] {warning}")
             lines.append("")
         
         # Errors
         if result.errors:
             lines.append("ERRORS:")
             for error in result.errors:
-                lines.append(f"  ✗ {error}")
+                lines.append(f"  [X] {error}")
             lines.append("")
         
         # Auto-fixes
         if result.auto_fixes:
             lines.append("AVAILABLE AUTO-FIXES:")
             for fix in result.auto_fixes:
-                lines.append(f"  🔧 {fix}")
+                lines.append(f"  [fix] {fix}")
             lines.append("")
         
         # Key metrics

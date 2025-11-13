@@ -112,7 +112,7 @@ class CanvasGrid:
         Returns:
             Grid array with DMC color indices
         """
-        print(f"Creating {self.cells_w}×{self.cells_h} diamond painting grid...")
+        print(f"Creating {self.cells_w}x{self.cells_h} diamond painting grid...")
         
         # Convert Lab image to DMC color indices
         self.grid_data = self._map_lab_to_dmc_indices(image_lab)
@@ -238,7 +238,7 @@ class CanvasGrid:
         print("\n" + "="*60)
         print("COLOR USAGE STATISTICS")
         print("="*60)
-        print(f"Grid size: {self.cells_w} × {self.cells_h} drills")
+        print(f"Grid size: {self.cells_w} x {self.cells_h} drills")
         print(f"Total cells: {self.total_cells:,}")
         print(f"Colors used: {len(self.dmc_colors)}")
         print(f"Spare ratio: {self.config.export.spare_ratio:.0%}")

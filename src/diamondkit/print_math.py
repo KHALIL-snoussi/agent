@@ -15,7 +15,7 @@ class PrintSpecs:
     # Paper specs
     paper_width_mm: float = 210.0  # A4 width
     paper_height_mm: float = 297.0  # A4 height
-    dpi: int = 600  # High DPI for print clarity (≥300 required)
+    dpi: int = 600  # High DPI for print clarity (>=300 required)
     
     # Margins (within 10-15mm range)
     margin_mm: float = 12.0  # Chosen within 10-15mm range

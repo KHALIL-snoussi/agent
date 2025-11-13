@@ -2,7 +2,7 @@
 
 A beautiful, professional web interface for transforming photos into diamond painting kits with industry-standard DMC colors.
 
-## 🌟 Features
+## * Features
 
 ### Modern Web Interface
 - **Drag & Drop Upload**: Simply drag your image onto the upload area
@@ -24,7 +24,7 @@ A beautiful, professional web interface for transforming photos into diamond pai
 - **Preview Image**: High-resolution visualization of completed design
 - **JSON Manifest**: Complete processing parameters and metadata
 
-## 🚀 Quick Start
+## [launch] Quick Start
 
 ### Option 1: Easy Launcher (Recommended)
 ```bash
@@ -45,7 +45,7 @@ pip install flask werkzeug pillow numpy reportlab
 python web_app.py
 ```
 
-## 📱 Using the Web Application
+## [phone] Using the Web Application
 
 ### Step 1: Upload Your Image
 - Open http://localhost:5000 in your browser
@@ -63,7 +63,7 @@ python web_app.py
 - Wait for processing (typically 30-60 seconds)
 - Download your complete kit files
 
-## 📊 Output Files
+## [chart] Output Files
 
 ### 1. Printable PDF (`diamond_kit.pdf`)
 - Cover page with preview
@@ -95,12 +95,12 @@ B,Blanc,White,#FFFFFF,1890,10
 }
 ```
 
-## 🎨 Canvas Recommendations
+## [kit] Canvas Recommendations
 
 ### Standard Sizes
-- **Small**: 20×30 cm (1,500-3,000 drills) - 2-4 hours
-- **Medium**: 30×40 cm (8,000-15,000 drills) - 8-15 hours
-- **Large**: 40×50 cm (18,000-25,000 drills) - 20-30 hours
+- **Small**: 20x30 cm (1,500-3,000 drills) - 2-4 hours
+- **Medium**: 30x40 cm (8,000-15,000 drills) - 8-15 hours
+- **Large**: 40x50 cm (18,000-25,000 drills) - 20-30 hours
 
 ### Color Count Guidelines
 - **Beginner**: 7-12 colors - Simple, fast completion
@@ -113,7 +113,7 @@ B,Blanc,White,#FFFFFF,1890,10
 - **Floyd-Steinberg**: Natural gradients, more organic look
 - **None**: Flat colors, cartoon-like appearance
 
-## 🔧 Technical Details
+## [fix] Technical Details
 
 ### Color Processing Pipeline
 1. **Image Loading**: Convert to sRGB, validate format
@@ -138,18 +138,18 @@ B,Blanc,White,#FFFFFF,1890,10
 - **Embedded Fonts**: Consistent rendering across systems
 - **Vector Graphics**: Crisp symbols and text at any scale
 
-## 🛠️ Development
+## [tools] Development
 
 ### Project Structure
 ```
-├── web_app.py              # Flask web application
-├── start_web_app.py        # Easy launcher script
-├── templates/
-│   ├── index.html         # Upload and configuration page
-│   └── results.html      # Results and download page
-├── src/diamondkit/        # Core processing library
-├── data/dmc.csv          # DMC color database
-└── requirements.txt        # Python dependencies
+|--- web_app.py              # Flask web application
+|--- start_web_app.py        # Easy launcher script
+|--- templates/
+|   |--- index.html         # Upload and configuration page
+|   `--- results.html      # Results and download page
+|--- src/diamondkit/        # Core processing library
+|--- data/dmc.csv          # DMC color database
+`--- requirements.txt        # Python dependencies
 ```
 
 ### API Endpoints
@@ -173,7 +173,7 @@ All CLI options are available through the web interface:
 | Spare Ratio | Slider | `--spare-ratio` | 0.10 | 0.0-0.5 |
 | Bag Size | Number input | `--bag-size` | 200 | 50-500 |
 
-## 🐛 Troubleshooting
+## [bug] Troubleshooting
 
 ### Common Issues
 
@@ -203,28 +203,28 @@ All CLI options are available through the web interface:
 ### Performance Tips
 - **Optimal Image Size**: 1000-2000px on the longest side
 - **Color Count**: 20-35 colors for best balance
-- **Canvas Size**: 30×40 cm for most users
+- **Canvas Size**: 30x40 cm for most users
 - **Dithering**: Ordered mode is fastest, Floyd-Steinberg is slower
 
-## 📱 Browser Compatibility
+## [phone] Browser Compatibility
 
 ### Fully Supported
-- ✅ Chrome 90+
-- ✅ Firefox 88+
-- ✅ Safari 14+
-- ✅ Edge 90+
+- [OK] Chrome 90+
+- [OK] Firefox 88+
+- [OK] Safari 14+
+- [OK] Edge 90+
 
 ### Partial Support
-- ⚠️ Internet Explorer 11 (basic functionality)
-- ⚠️ Very old browsers (may not work)
+- [warn] Internet Explorer 11 (basic functionality)
+- [warn] Very old browsers (may not work)
 
 ### Mobile Features
-- ✅ Touch-friendly controls
-- ✅ Responsive design
-- ✅ Camera upload support
-- ✅ Gesture-based interactions
+- [OK] Touch-friendly controls
+- [OK] Responsive design
+- [OK] Camera upload support
+- [OK] Gesture-based interactions
 
-## 🔒 Security & Privacy
+## [lock] Security & Privacy
 
 - **Local Processing**: All processing happens on your computer
 - **No Cloud Uploads**: Images never leave your system
@@ -232,11 +232,11 @@ All CLI options are available through the web interface:
 - **No Tracking**: No analytics or tracking scripts
 - **Open Source**: Full code transparency
 
-## 📄 License
+## [doc] License
 
 MIT License - Free for personal and commercial use. See LICENSE file for details.
 
-## 🤝 Contributing
+## [team] Contributing
 
 Contributions welcome! Please see CONTRIBUTING.md for guidelines.
 
@@ -249,4 +249,4 @@ Contributions welcome! Please see CONTRIBUTING.md for guidelines.
 3. Upload your photo and configure settings
 4. Download your professional diamond painting kit!
 
-🎨 **Transform your memories into beautiful diamond paintings today!**
+[kit] **Transform your memories into beautiful diamond paintings today!**

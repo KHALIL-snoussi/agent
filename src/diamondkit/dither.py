@@ -10,7 +10,7 @@ from .config import Config
 class DitherEngine:
     """Handles various dithering algorithms for color quantization."""
     
-    # Bayer 8×8 matrix for ordered dithering
+    # Bayer 8x8 matrix for ordered dithering
     BAYER_MATRIX_8x8 = np.array([
         [0, 48, 12, 60, 3, 51, 15, 63],
         [32, 16, 44, 28, 35, 19, 47, 31],
@@ -322,7 +322,7 @@ class DitherEngine:
         if self.config.dither.mode == "none":
             return "No dithering - pure color quantization"
         elif self.config.dither.mode == "ordered":
-            return f"Ordered dithering (Bayer 8×8) with {self.config.dither.strength:.0%} strength"
+            return f"Ordered dithering (Bayer 8x8) with {self.config.dither.strength:.0%} strength"
         elif self.config.dither.mode == "fs":
             return "Floyd-Steinberg error diffusion dithering"
         else:

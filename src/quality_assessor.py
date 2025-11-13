@@ -235,7 +235,7 @@ class QualityAssessor:
     def generate_quality_report(self, assessment: QualityAssessment) -> str:
         """Generate a formatted quality report."""
         report = f"""
-📊 Quality Assessment Report
+[chart] Quality Assessment Report
 {"="*40}
 
 Overall Quality: {assessment.level.value}
@@ -245,20 +245,20 @@ Issues Found:
 """
         if assessment.issues:
             for issue in assessment.issues:
-                report += f"  • {issue}\n"
+                report += f"  - {issue}\n"
         else:
-            report += "  ✅ No major issues detected\n"
+            report += "  [OK] No major issues detected\n"
         
         report += "\nSuggestions for Improvement:\n"
         for suggestion in assessment.suggestions:
-            report += f"  💡 {suggestion}\n"
+            report += f"  [tip] {suggestion}\n"
         
         report += f"""
 {"="*40}
 
 Quality Guide:
-• Good (0.8-1.0): Optimal for paint-by-numbers
-• OK (0.6-0.8): Acceptable with minor compromises  
-• Low (0.0-0.6): Consider improvements before processing
+- Good (0.8-1.0): Optimal for paint-by-numbers
+- OK (0.6-0.8): Acceptable with minor compromises  
+- Low (0.0-0.6): Consider improvements before processing
 """
         return report

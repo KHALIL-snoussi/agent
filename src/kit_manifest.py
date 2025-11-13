@@ -146,7 +146,7 @@ class ManifestManager:
         if not self.manifests:
             return "No kits generated yet."
         
-        summary = "📋 Kit Manifest Summary\n" + "="*50 + "\n\n"
+        summary = "[clipboard] Kit Manifest Summary\n" + "="*50 + "\n\n"
         
         for code, manifest in sorted(self.manifests.items(), 
                                key=lambda x: x[1].timestamp, reverse=True):

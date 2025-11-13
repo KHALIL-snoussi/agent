@@ -2,16 +2,16 @@
 
 A professional-grade tool that transforms any image into a complete QBRIX-quality diamond painting kit with **fixed 7-color DMC palettes**, advanced color science, and print-ready A4 multi-page PDFs.
 
-## 🎯 QBRIX Features
+## [focus] QBRIX Features
 
 - **Fixed 7-Color DMC Palettes**: Three locked styles (ORIGINAL/VINTAGE/POPART) with exact DMC codes
-- **Advanced Color Science**: Lab color space with ΔE2000 quantization to fixed palettes
-- **Quality Gates System**: Automated validation with ≤10,000 cell enforcement and quality warnings
+- **Advanced Color Science**: Lab color space with DeltaE2000 quantization to fixed palettes
+- **Quality Gates System**: Automated validation with <=10,000 cell enforcement and quality warnings
 - **QBRIX-Style PDF**: Multi-page A4 landscape instruction booklets with numeric grids, crop marks, registration crosses
 - **Complete Output**: Professional CSV inventory, comprehensive JSON metadata, and style preview images
 - **Print Optimized**: A4 tiling with configurable cell sizes (2.3-3.0mm), 300-600 DPI
 
-## 🎨 Fixed 7-Color DMC Palettes
+## [kit] Fixed 7-Color DMC Palettes
 
 ### ORIGINAL (Natural Enhancement)
 ```
@@ -31,7 +31,7 @@ Muted sepia/cream range for traditional and heritage looks.
 ```
 Bold high-contrast set for vibrant, eye-catching designs.
 
-## 🚀 Quick Start
+## [launch] Quick Start
 
 ### Installation
 
@@ -70,7 +70,7 @@ python demo_qbrix_kit.py
 python demo_qbrix_kit.py pixel.jpg --style VINTAGE
 ```
 
-## 📋 Command Line Interface
+## [clipboard] Command Line Interface
 
 ### Main Commands
 
@@ -108,7 +108,7 @@ python main.py demo
 - `--verbose`: Enable detailed output
 - `--config FILE`: Custom configuration file
 
-## 📊 QBRIX Output Files
+## [chart] QBRIX Output Files
 
 Each generated kit includes:
 
@@ -149,19 +149,19 @@ B5200,White,#ffffff,1,1338,7,45.26,58.76
 - `preview_vintage.jpg`: VINTAGE style overlay  
 - `preview_popart.jpg`: POPART style overlay
 
-## 🎨 QBRIX Color Processing Pipeline
+## [kit] QBRIX Color Processing Pipeline
 
 ### 1. Fixed Palette Quantization
-- **ΔE2000 Distance**: Lab color space with CIEDE2000 color difference
+- **DeltaE2000 Distance**: Lab color space with CIEDE2000 color difference
 - **Fixed 7 Colors**: No dynamic palette learning, locked to style specifications
 - **Grid Index Map**: Stable 2D array with SHA256 hashing for consistency
-- **Spatial Smoothing**: Optional 3×3 majority filter to reduce noise
+- **Spatial Smoothing**: Optional 3x3 majority filter to reduce noise
 
 ### 2. Quality Assessment
-- **ΔE Statistics**: Mean and maximum color difference metrics
+- **DeltaE Statistics**: Mean and maximum color difference metrics
 - **SSIM Analysis**: Structural similarity between original and quantized
 - **Color Balance**: Distribution analysis with rare color warnings
-- **Scale Factor**: Grid optimization tracking for ≤10,000 cell constraint
+- **Scale Factor**: Grid optimization tracking for <=10,000 cell constraint
 
 ### 3. Style Overlays (Preview Only)
 Grid assignments NEVER change between styles. Only preview overlays differ:
@@ -170,14 +170,14 @@ Grid assignments NEVER change between styles. Only preview overlays differ:
 - **VINTAGE**: Sepia aging with paper texture and vignette
 - **POPART**: High contrast with edge enhancement and black outlines
 
-## ⚙️ Configuration
+## [gear] Configuration
 
 ### QBRIX Configuration (`config.yaml`)
 
 ```yaml
 # Print specifications (QBRIX standards)
 print_specs:
-  dpi: 600  # Print DPI (≥300 recommended, 600 for quality)
+  dpi: 600  # Print DPI (>=300 recommended, 600 for quality)
   margin_mm: 12.0  # A4 page margins in mm (10-15mm range)
   cell_size_mm: 2.8  # Drill/cell size in mm (2.3-3.0mm range)
   paper_size: "A4"  # Always A4 landscape for QBRIX
@@ -193,7 +193,7 @@ fixed_palettes:
 # Grid constraints (QBRIX requirements)
 grid_constraints:
   max_cells: 10000  # Hard cap on total cells
-  max_aspect_deviation: 0.02  # ±2% aspect ratio tolerance
+  max_aspect_deviation: 0.02  # +/-2% aspect ratio tolerance
   overlap_cells: 2  # Cell overlap between tiles for assembly
 
 # Quality thresholds
@@ -205,13 +205,13 @@ quality_thresholds:
   min_stroke_mm: 0.15  # Line thickness threshold
 ```
 
-## 📏 Print & Scaling Math
+## [ruler] Print & Scaling Math
 
 ### A4 Specifications
-- **Paper Size**: 210 × 297 mm
-- **Usable Area**: (210 - 2×margin) × (297 - 2×margin) mm
+- **Paper Size**: 210 x 297 mm
+- **Usable Area**: (210 - 2xmargin) x (297 - 2xmargin) mm
 - **Cell Size**: 2.3-3.0 mm (configurable, default 2.8 mm)
-- **Grid Limit**: ≤10,000 cells with automatic scaling
+- **Grid Limit**: <=10,000 cells with automatic scaling
 
 ### Tiling System
 - **Multi-page Layout**: Automatic A4 tiling for large grids
@@ -220,48 +220,48 @@ quality_thresholds:
 - **Registration Marks**: Corner crop marks and quarter-point crosses
 
 ### Symbol Legibility
-- **X-height**: ≥1.2 mm at print scale
-- **Stroke Thickness**: ≥0.15 mm for clarity
+- **X-height**: >=1.2 mm at print scale
+- **Stroke Thickness**: >=0.15 mm for clarity
 - **Font**: Helvetica-Bold, 40% of cell size
 - **Symbols**: Digits 1-7 for user-friendliness
 
-## 🔍 Quality Gates System
+## [search] Quality Gates System
 
 ### Automatic Validation
-- ✅ **Palette Size**: Exactly 7 colors enforced
-- ✅ **Cell Cap**: ≤10,000 cells with automatic scaling
-- ✅ **Grid Consistency**: Same assignments across all outputs
-- ✅ **Symbol Legibility**: Print-size validation
-- ✅ **Tiling Coverage**: Complete grid coverage verification
+- [OK] **Palette Size**: Exactly 7 colors enforced
+- [OK] **Cell Cap**: <=10,000 cells with automatic scaling
+- [OK] **Grid Consistency**: Same assignments across all outputs
+- [OK] **Symbol Legibility**: Print-size validation
+- [OK] **Tiling Coverage**: Complete grid coverage verification
 
 ### Quality Warnings
-- ⚠️ **High ΔE Max**: >12.0 indicates color accuracy risk
-- ⚠️ **Low SSIM**: <0.75 indicates detail loss risk
-- ⚠️ **Rare Colors**: <2% usage suggests poor subject match
-- ⚠️ **Scale Factor**: <0.1 indicates excessive downscaling
+- [warn] **High DeltaE Max**: >12.0 indicates color accuracy risk
+- [warn] **Low SSIM**: <0.75 indicates detail loss risk
+- [warn] **Rare Colors**: <2% usage suggests poor subject match
+- [warn] **Scale Factor**: <0.1 indicates excessive downscaling
 
-## 🛠️ QBRIX Architecture
+## [tools] QBRIX Architecture
 
 ```
 src/diamondkit/
-├── __init__.py              # Package initialization
-├── fixed_palettes.py        # Three locked 7-color DMC palettes
-├── dmc.py                  # DMC color database management
-├── print_math.py           # A4 tiling and scaling calculations
-├── grid_index_map.py        # Stable grid representation with hashing
-├── quantize.py             # ΔE2000 quantization to fixed palettes
-├── quality_assessor.py      # ΔE, SSIM, and quality metrics
-├── quality_gates.py        # Automated validation system
-├── pdf.py                  # QBRIX-style PDF generation
-├── kit_generator.py        # Unified workflow with quality gates
-├── export.py               # CSV/JSON/preview generation
-├── cli.py                  # Command-line interface
-└── config.py               # Configuration management
+|--- __init__.py              # Package initialization
+|--- fixed_palettes.py        # Three locked 7-color DMC palettes
+|--- dmc.py                  # DMC color database management
+|--- print_math.py           # A4 tiling and scaling calculations
+|--- grid_index_map.py        # Stable grid representation with hashing
+|--- quantize.py             # DeltaE2000 quantization to fixed palettes
+|--- quality_assessor.py      # DeltaE, SSIM, and quality metrics
+|--- quality_gates.py        # Automated validation system
+|--- pdf.py                  # QBRIX-style PDF generation
+|--- kit_generator.py        # Unified workflow with quality gates
+|--- export.py               # CSV/JSON/preview generation
+|--- cli.py                  # Command-line interface
+`--- config.py               # Configuration management
 ```
 
 ### Core Algorithms
 
-1. **ΔE2000 Color Distance**
+1. **DeltaE2000 Color Distance**
    - CIEDE2000 implementation for perceptual accuracy
    - Lab color space processing with DMC palette constraints
 
@@ -280,48 +280,48 @@ src/diamondkit/
    - Professional layout with crop marks and registration
    - Multi-page tiling with coordinate systems
 
-## 📈 Performance
+## [chart] Performance
 
 Typical processing times:
-- **Small image** (800×600): ~3-8 seconds
-- **Medium image** (1200×900): ~8-15 seconds  
-- **Large image** (2000×1500): ~15-30 seconds
+- **Small image** (800x600): ~3-8 seconds
+- **Medium image** (1200x900): ~8-15 seconds  
+- **Large image** (2000x1500): ~15-30 seconds
 
 Performance optimized for:
-- ΔE2000 calculations with vectorized operations
+- DeltaE2000 calculations with vectorized operations
 - Fixed palette constraints reducing complexity
 - Quality gates for early validation
 
-## 🎯 Production Readiness
+## [focus] Production Readiness
 
 The QBRIX system is **production-ready** for commercial diamond painting kit generation:
 
-### Compliance ✅
+### Compliance [OK]
 - **Fixed 7-Color Requirement**: Exactly enforced per style
-- **≤10,000 Cell Constraint**: Hard cap with automatic scaling
+- **<=10,000 Cell Constraint**: Hard cap with automatic scaling
 - **A4 Print Optimization**: Professional layout and tiling
 - **Output Format Compliance**: Exact CSV/JSON/PDF specifications
 
-### Quality ✅
-- **ΔE2000 Color Science**: Industry-standard accuracy
+### Quality [OK]
+- **DeltaE2000 Color Science**: Industry-standard accuracy
 - **Automated Validation**: Quality gates prevent silent failures
 - **Print Legibility**: Symbol sizing and stroke validation
 - **Consistent Hashing**: Grid invariance verification
 
-### Usability ✅
+### Usability [OK]
 - **Simple CLI**: Clear commands with helpful defaults
 - **Web Interface**: Browser-based kit generation
 - **Comprehensive Metadata**: Complete production tracking
 - **Style Flexibility**: Three professional palettes
 
-## 🌐 Web Interface
+## [web] Web Interface
 
 ```bash
 # Start web server
 python web_app.py
 
 # Open browser to http://localhost:5000
-# Upload image → Select style → Generate kit
+# Upload image -> Select style -> Generate kit
 ```
 
 Web features:
@@ -330,7 +330,7 @@ Web features:
 - **Real-time Metrics**: Quality assessment display
 - **Download**: Complete kit bundle generation
 
-## 🤝 Contributing
+## [team] Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -338,11 +338,11 @@ Web features:
 4. Add tests for quality gates
 5. Submit pull request
 
-## 📄 License
+## [doc] License
 
 Open source - see LICENSE file for details.
 
-## 🆘 Support
+## [SOS] Support
 
 - **Issues**: Report on GitHub with quality gates output
 - **Questions**: Check `QBRIX_REFACTORING_SUMMARY.md`
@@ -350,16 +350,16 @@ Open source - see LICENSE file for details.
 
 ---
 
-**Transform your photos into professional QBRIX-quality diamond painting kits!** 🎨✨
+**Transform your photos into professional QBRIX-quality diamond painting kits!** [kit]*
 
-## 🎯 QBRIX Standards Met
+## [focus] QBRIX Standards Met
 
-- ✅ **Fixed 7-Color DMC Palettes**: Three locked styles with exact codes
-- ✅ **≤10,000 Cell Constraint**: Hard enforcement with automatic scaling
-- ✅ **A4 Multi-Page PDF**: Professional instruction booklets
-- ✅ **ΔE2000 Color Science**: Industry-standard accuracy
-- ✅ **Quality Gates**: Automated validation and warnings
-- ✅ **Print Optimization**: Legibility and scaling verification
-- ✅ **Complete Outputs**: CSV, JSON, PDF, and preview images
+- [OK] **Fixed 7-Color DMC Palettes**: Three locked styles with exact codes
+- [OK] **<=10,000 Cell Constraint**: Hard enforcement with automatic scaling
+- [OK] **A4 Multi-Page PDF**: Professional instruction booklets
+- [OK] **DeltaE2000 Color Science**: Industry-standard accuracy
+- [OK] **Quality Gates**: Automated validation and warnings
+- [OK] **Print Optimization**: Legibility and scaling verification
+- [OK] **Complete Outputs**: CSV, JSON, PDF, and preview images
 
 The system delivers commercial-grade diamond painting kits ready for professional production.

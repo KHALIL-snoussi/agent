@@ -12,13 +12,18 @@ from pathlib import Path
 
 import numpy as np
 from PIL import Image
-from skimage.color import rgb2lab
 
 from .fixed_palettes import get_fixed_palette_manager, list_available_styles
 from .print_math import get_print_math_engine, PrintSpecs, GridSpecs
 from .grid_index_map import create_grid_index_map, verify_grid_invariance
 from .quality_assessor import assess_quality, generate_quality_report
 from .dmc import DMCColor
+from .image_preprocessor import (
+    ImagePreprocessor,
+    PreprocessResult,
+    ProcessingSettings,
+    load_processing_settings,
+)
 
 
 class DiamondKitGenerator:
@@ -29,7 +34,7 @@ class DiamondKitGenerator:
         Initialize kit generator with print specifications.
         
         Args:
-            dpi: Print DPI (≥300 required, default 600 for quality)
+            dpi: Print DPI (>=300 required, default 600 for quality)
             margin_mm: Paper margins in mm (10-15mm range, default 12mm)
             cell_size_mm: Cell size in mm (2.3-3.0mm range, default 2.8mm)
         """
@@ -40,6 +45,8 @@ class DiamondKitGenerator:
         )
         self.print_engine = get_print_math_engine(self.print_specs)
         self.palette_manager = get_fixed_palette_manager()
+        self.processing_settings: ProcessingSettings = load_processing_settings()
+        self.preprocessor = ImagePreprocessor(self.print_engine, self.processing_settings)
     
     def generate_kit(self, image_path: str, style_name: str, 
                     output_dir: str, crop_rect: Optional[Tuple[float, float, float, float]] = None) -> Dict[str, Any]:
@@ -63,33 +70,34 @@ class DiamondKitGenerator:
         if style_name not in list_available_styles():
             raise ValueError(f"Unknown style '{style_name}'. Available: {list_available_styles()}")
         
-        # Load and validate image
-        original_rgb, original_lab = self._load_and_validate_image(image_path)
+        # High-fidelity preprocessing with smart cropping and exposure control
+        preprocess_result = self.preprocessor.process_image(image_path, crop_rect)
+        grid_specs = preprocess_result.grid_specs
+        scale_factor = preprocess_result.scale_factor
         
-        # Apply smart cropping if needed
-        cropped_rgb = self._apply_smart_cropping(original_rgb, crop_rect)
-        cropped_lab = rgb2lab(cropped_rgb / 255.0)
-        
-        # Calculate grid specifications with 10k cap enforcement
-        grid_specs, scale_factor = self.print_engine.calculate_grid_from_image(
-            cropped_rgb.shape[1], cropped_rgb.shape[0]
-        )
+        popart_bias = self.processing_settings.popart_edge_bias if style_name == "POPART" else 0.0
         
         # Create fixed GRID_INDEX_MAP
         grid_map = create_grid_index_map(
-            cropped_lab, grid_specs, style_name, enable_smoothing=True
+            preprocess_result.grid_lab,
+            grid_specs,
+            style_name,
+            enable_smoothing=self.processing_settings.smoothing_enabled,
+            smoothing_kernel=self.processing_settings.smoothing_kernel,
+            image_is_preprocessed=True,
+            popart_edge_bias=popart_bias,
+            popart_edge_threshold=self.processing_settings.popart_edge_threshold,
         )
         
         # Generate quantized RGB from grid map
         quantized_rgb = self._grid_to_rgb_visualization(grid_map)
         
-        # Resize cropped RGB to match grid dimensions for SSIM comparison
-        resized_for_ssim = self._resize_image_for_comparison(cropped_rgb, grid_map.grid_specs)
-        resized_lab_for_ssim = rgb2lab(resized_for_ssim / 255.0)
-        
-        # Assess quality
+        # Assess quality on the grid-ready crop
         quality_metrics = assess_quality(
-            resized_for_ssim, quantized_rgb, grid_map, resized_lab_for_ssim
+            preprocess_result.grid_rgb,
+            quantized_rgb,
+            grid_map,
+            preprocess_result.grid_lab
         )
         
         # Run quality gates validation
@@ -99,34 +107,40 @@ class DiamondKitGenerator:
         # Update quality metrics with quality gates results
         quality_metrics.quality_warnings.extend(quality_result.warnings)
         quality_metrics.quality_risks.extend(quality_result.errors)
+        quality_metrics.auto_fixes.extend(quality_result.auto_fixes)
         
         # Apply auto-fixes if available and needed
         if quality_result.errors and quality_result.auto_fixes:
             print("Applying quality gates auto-fixes:")
             for fix in quality_result.auto_fixes:
-                print(f"  🔧 {fix}")
+                print(f"  [fix] {fix}")
             # Note: In production, you might implement actual auto-fixes here
             # For now, we'll just report them in metadata
         
         # Generate all output artifacts
         kit_outputs = self._generate_all_outputs(
-            cropped_rgb, quantized_rgb, grid_map, quality_metrics, 
-            style_name, output_dir, scale_factor
+            preprocess_result,
+            quantized_rgb,
+            grid_map,
+            quality_metrics,
+            style_name,
+            output_dir,
+            scale_factor,
         )
         
         # Compile comprehensive metadata
         metadata = self._compile_comprehensive_metadata(
-            grid_map, quality_metrics, scale_factor, crop_rect, kit_outputs
+            grid_map,
+            quality_metrics,
+            quality_result,
+            scale_factor,
+            preprocess_result,
+            kit_outputs,
         )
-        
-        # Add quality gates results to metadata
-        metadata['quality_gates'] = {
-            'passed': quality_result.passed,
-            'warnings': quality_result.warnings,
-            'errors': quality_result.errors,
-            'auto_fixes': quality_result.auto_fixes,
-            'metrics': quality_result.metrics
-        }
+        metadata["output_files"]["kit_metadata"] = "kit_metadata.json"
+        metadata["output_files"]["metadata_legacy"] = "metadata.json"
+        metadata_files = self._write_metadata_bundle(metadata, output_dir)
+        kit_outputs.update(metadata_files)
         
         # Print quality gates report
         from .quality_gates import QualityGates
@@ -134,15 +148,10 @@ class DiamondKitGenerator:
         quality_report = gates.generate_quality_report(quality_result)
         print("\n" + quality_report)
         
-        # Save metadata
-        metadata_path = os.path.join(output_dir, "kit_metadata.json")
-        with open(metadata_path, 'w') as f:
-            json.dump(metadata, f, indent=2, default=str)
-        
         print(f"Kit generation complete! Output in: {output_dir}")
-        print(f"Grid: {grid_specs.cols}×{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
+        print(f"Grid: {grid_specs.cols}x{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
         print(f"Quality: {quality_metrics.overall_quality}")
-        print(f"ΔE: mean={quality_metrics.delta_e_mean:.1f}, max={quality_metrics.delta_e_max:.1f}")
+        print(f"DeltaE: mean={quality_metrics.delta_e_mean:.1f}, max={quality_metrics.delta_e_max:.1f}")
         
         return {
             "metadata": metadata,
@@ -152,92 +161,6 @@ class DiamondKitGenerator:
             "grid_specs": grid_specs,
             "scale_factor": scale_factor
         }
-    
-    def _load_and_validate_image(self, image_path: str) -> Tuple[np.ndarray, np.ndarray]:
-        """Load and validate input image."""
-        print(f"Loading image: {image_path}")
-        
-        # Load image using PIL directly (simplest approach)
-        pil_image = Image.open(image_path)
-        if pil_image.mode != 'RGB':
-            pil_image = pil_image.convert('RGB')
-        original_rgb = np.array(pil_image)
-        
-        # Validate image properties
-        h, w = original_rgb.shape[:2]
-        
-        if h < 800 or w < 800:
-            print(f"Warning: Small image ({w}×{h}). Consider higher resolution for better results.")
-        
-        # Check for sufficient contrast/entropy
-        gray = np.mean(original_rgb, axis=2)
-        entropy = -np.sum((np.histogram(gray, 256)[0] / gray.size) * 
-                        np.log2(np.histogram(gray, 256)[0] / gray.size + 1e-10))
-        
-        if entropy < 3.0:
-            print(f"Warning: Low image entropy ({entropy:.2f}). May result in poor quantization.")
-        
-        # Convert to Lab
-        original_lab = rgb2lab(original_rgb / 255.0)
-        
-        return original_rgb, original_lab
-    
-    def _apply_smart_cropping(self, image_rgb: np.ndarray, 
-                           crop_rect: Optional[Tuple[float, float, float, float]]) -> np.ndarray:
-        """Apply smart cropping or use provided crop rectangle."""
-        h, w = image_rgb.shape[:2]
-        
-        if crop_rect is not None:
-            # Use provided crop rectangle
-            x, y, crop_w, crop_h = crop_rect
-            
-            # Convert normalized to pixel coordinates
-            x_px = int(x * w)
-            y_px = int(y * h)
-            w_px = int(crop_w * w)
-            h_px = int(crop_h * h)
-            
-            # Ensure bounds
-            x_px = max(0, min(x_px, w - 1))
-            y_px = max(0, min(y_px, h - 1))
-            w_px = min(w_px, w - x_px)
-            h_px = min(h_px, h - y_px)
-            
-            return image_rgb[y_px:y_px+h_px, x_px:x_px+w_px]
-        
-        else:
-            # Auto-suggest crop (implement simple center crop for now)
-            # Could be enhanced with saliency detection
-            target_aspect = 4/3  # Standard aspect ratio
-            
-            current_aspect = w / h
-            if abs(current_aspect - target_aspect) > 0.2:
-                # Crop to match target aspect
-                if current_aspect > target_aspect:
-                    # Too wide - crop width
-                    new_w = int(h * target_aspect)
-                    x_start = (w - new_w) // 2
-                    return image_rgb[:, x_start:x_start+new_w]
-                else:
-                    # Too tall - crop height
-                    new_h = int(w / target_aspect)
-                    y_start = (h - new_h) // 2
-                    return image_rgb[y_start:y_start+new_h, :]
-            
-            return image_rgb
-    
-    def _resize_image_for_comparison(self, image_rgb: np.ndarray, grid_specs) -> np.ndarray:
-        """Resize image to match grid dimensions for SSIM comparison."""
-        from PIL import Image
-        
-        h, w = image_rgb.shape[:2]
-        
-        if w == grid_specs.cols and h == grid_specs.rows:
-            return image_rgb
-        
-        pil_image = Image.fromarray(image_rgb)
-        resized_image = pil_image.resize((grid_specs.cols, grid_specs.rows), Image.LANCZOS)
-        return np.array(resized_image)
     
     def _grid_to_rgb_visualization(self, grid_map) -> np.ndarray:
         """Convert grid index map to RGB visualization."""
@@ -252,9 +175,10 @@ class DiamondKitGenerator:
         
         return rgb_image
     
-    def _generate_all_outputs(self, original_rgb: np.ndarray, quantized_rgb: np.ndarray,
+    def _generate_all_outputs(self, preprocess_result: PreprocessResult,
+                           quantized_rgb: np.ndarray,
                            grid_map, quality_metrics,
-                           style_name: str, output_dir: str, 
+                           style_name: str, output_dir: str,
                            scale_factor: float) -> Dict[str, str]:
         """Generate all required output artifacts."""
         outputs = {}
@@ -264,7 +188,7 @@ class DiamondKitGenerator:
         
         # Generate preview images
         outputs["original_preview"] = self._save_preview_image(
-            original_rgb, output_dir, "original_preview.jpg"
+            preprocess_result.cropped_rgb, output_dir, "original_preview.jpg"
         )
         
         outputs["quantized_preview"] = self._save_preview_image(
@@ -274,8 +198,8 @@ class DiamondKitGenerator:
         # Generate style previews (all styles using same grid map)
         for style in list_available_styles():
             style_preview = self._generate_style_preview(grid_map, style)
-            outputs[f"preview_{style.lower()}"] = self._save_preview_image(
-                style_preview, output_dir, f"preview_{style.lower()}.jpg"
+            outputs[f"{style.lower()}_style_preview"] = self._save_preview_image(
+                style_preview, output_dir, f"{style.lower()}_style_preview.jpg"
             )
         
         # Generate CSV inventory
@@ -283,14 +207,9 @@ class DiamondKitGenerator:
             grid_map, quality_metrics, output_dir
         )
         
-        # Generate JSON metadata
-        outputs["json_metadata"] = self._generate_json_metadata(
-            grid_map, quality_metrics, scale_factor, output_dir
-        )
-        
         # Generate PDF kit (placeholder - will be implemented in pdf.py)
         outputs["pdf_kit"] = self._generate_pdf_kit(
-            grid_map, original_rgb, output_dir, style_name, quality_metrics, scale_factor
+            grid_map, output_dir, style_name, quality_metrics, scale_factor
         )
         
         return outputs
@@ -318,146 +237,36 @@ class DiamondKitGenerator:
         return output_path
     
     def _generate_style_preview(self, grid_map, style_name: str) -> np.ndarray:
-        """Generate professional style preview overlay (maintains same grid assignments)."""
-        base_rgb = self._grid_to_rgb_visualization(grid_map)
-        h, w = base_rgb.shape[:2]
+        """Render the grid using the palette of the requested style."""
+        try:
+            palette = self.palette_manager.get_palette(style_name.upper())
+        except ValueError:
+            palette = self.palette_manager.get_palette(grid_map.style_name)
         
-        print(f"Generating {style_name} style preview...")
+        colors = palette.get_colors()
+        rows, cols = grid_map.grid_data.shape
+        preview = np.zeros((rows, cols, 3), dtype=np.uint8)
         
-        # Apply style-specific overlays (without changing grid assignments)
-        if style_name == "ORIGINAL":
-            # Professional original style with local contrast and subtle dithering
-            try:
-                from skimage.exposure import adjust_gamma, rescale_intensity
-                from skimage.filters import unsharp_mask
-                
-                # Local contrast enhancement via unsharp masking
-                enhanced = unsharp_mask(base_rgb / 255.0, radius=1.0, amount=0.3)
-                
-                # Subtle contrast boost
-                enhanced = adjust_gamma(enhanced, gamma=0.95)
-                
-                # Optional: very subtle ordered dithering to reduce banding
-                # Create dither pattern
-                dither_pattern = np.indices((h, w)).sum(axis=0) % 8 / 8.0
-                dither_pattern = np.dstack([dither_pattern] * 3) * 0.02  # 2% dither strength
-                
-                final = enhanced + dither_pattern
-                final = rescale_intensity(final, in_range=(0, 1), out_range=(0, 1))
-                
-                print("Applied professional ORIGINAL style: local contrast + subtle dithering")
-                return np.clip(final * 255, 0, 255).astype(np.uint8)
-                
-            except ImportError:
-                # Fallback to simple gamma adjustment
-                from skimage.exposure import adjust_gamma
-                enhanced = adjust_gamma(base_rgb / 255.0, gamma=1.1)
-                return np.clip(enhanced * 255, 0, 255).astype(np.uint8)
+        for idx, color in enumerate(colors):
+            preview[grid_map.grid_data == idx] = color.rgb
         
-        elif style_name == "VINTAGE":
-            # Professional vintage sepia with aging effects
-            try:
-                from skimage.filters import gaussian
-                
-                # Advanced sepia transformation
-                sepia_filter = np.array([[0.393, 0.769, 0.189],
-                                       [0.349, 0.686, 0.168],
-                                       [0.272, 0.534, 0.131]])
-                
-                vintage = base_rgb @ sepia_filter.T
-                
-                # Add subtle vignette (darkened edges)
-                y, x = np.ogrid[:h, :w]
-                center_y, center_x = h // 2, w // 2
-                
-                # Create vignette mask
-                max_dist = np.sqrt(center_y**2 + center_x**2)
-                y_dist = (y - center_y) / max_dist
-                x_dist = (x - center_x) / max_dist
-                dist_from_center = np.sqrt(y_dist**2 + x_dist**2)
-                
-                # Smooth vignette (darker at edges)
-                vignette = 1.0 - np.clip(dist_from_center * 0.3, 0, 0.4)
-                vignette = np.dstack([vignette] * 3)
-                
-                vintage = vintage * vignette
-                
-                # Add very subtle blur for aged look
-                vintage_blurred = gaussian(vintage.astype(float) / 255.0, sigma=0.3)
-                vintage = vintage * 0.9 + vintage_blurred * 0.1
-                
-                # Reduce saturation for vintage feel
-                vintage = vintage * 0.85
-                
-                print("Applied professional VINTAGE style: sepia + vignette + aging blur")
-                return np.clip(vintage, 0, 255).astype(np.uint8)
-                
-            except ImportError:
-                # Fallback to simple sepia
-                sepia_filter = np.array([[0.393, 0.769, 0.189],
-                                       [0.349, 0.686, 0.168],
-                                       [0.272, 0.534, 0.131]])
-                vintage = base_rgb @ sepia_filter.T
-                return np.clip(vintage, 0, 255).astype(np.uint8)
-        
-        elif style_name == "POPART":
-            # Professional popart with edge enhancement and posterization
-            try:
-                from skimage.filters import sobel, roberts
-                from skimage.morphology import disk
-                from skimage.filters import rank
-                
-                # Convert to grayscale for edge detection
-                gray = np.mean(base_rgb, axis=2)
-                
-                # Multiple edge detection methods for robust edge finding
-                edges1 = sobel(gray)
-                edges2 = roberts(gray)
-                edges = np.maximum(edges1, edges2)
-                
-                # Threshold edges and create binary edge map
-                edge_threshold = np.percentile(edges, 85)  # Top 15% strongest edges
-                edge_mask = edges > edge_threshold
-                
-                # Create black outline using DMC 310 (always first in POPART palette)
-                # DMC 310 should be black in POPART palette
-                black_color = base_rgb.min(axis=(0, 1))  # Approximate black
-                
-                # Apply black outlines to RGB image
-                popart = base_rgb.copy()
-                for c in range(3):
-                    popart[:, :, c] = np.where(edge_mask, black_color[c], popart[:, :, c])
-                
-                # Enhance contrast for popart look
-                from skimage.exposure import rescale_intensity
-                popart_enhanced = rescale_intensity(popart, in_range=(0, 255), out_range=(30, 255))
-                
-                # Subtle posterization effect (reduce color levels slightly)
-                levels = 6  # Posterization levels
-                popart_posterized = np.floor(popart_enhanced / (256/levels)) * (256/levels)
-                
-                # Combine enhanced and posterized for artistic effect
-                final_popart = popart_enhanced * 0.7 + popart_posterized * 0.3
-                
-                print("Applied professional POPART style: edge outlines + contrast + posterization")
-                return np.clip(final_popart, 0, 255).astype(np.uint8)
-                
-            except ImportError:
-                # Fallback to simple edge enhancement
-                from skimage.filters import sobel
-                edges = sobel(base_rgb.astype(float))
-                edge_enhanced = base_rgb + (edges * 20).astype(np.uint8)
-                return np.clip(edge_enhanced, 0, 255).astype(np.uint8)
-        
-        return base_rgb
+        return preview
+    
+    def _build_color_usage(self, grid_map) -> Dict[str, int]:
+        """Build mapping of DMC codes to drill counts."""
+        usage: Dict[str, int] = {}
+        unique_indices, counts = np.unique(grid_map.grid_data, return_counts=True)
+        for idx, count in zip(unique_indices, counts):
+            if idx < len(grid_map.palette_colors):
+                dmc_code = grid_map.palette_colors[idx].dmc_code
+                usage[dmc_code] = int(count)
+        return usage
     
     def _generate_csv_inventory(self, grid_map, quality_metrics, output_dir: str) -> str:
         """Generate exact CSV inventory format as specified."""
         csv_path = os.path.join(output_dir, "inventory.csv")
         
-        # Count drill requirements
-        h, w = grid_map.grid_data.shape
-        unique_indices, counts = np.unique(grid_map.grid_data, return_counts=True)
+        color_usage = self._build_color_usage(grid_map)
         
         with open(csv_path, 'w', newline='') as csvfile:
             fieldnames = [
@@ -467,71 +276,23 @@ class DiamondKitGenerator:
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             
-            for idx, count in zip(unique_indices, counts):
-                if idx < len(grid_map.palette_colors):
-                    color = grid_map.palette_colors[idx]
-                    
-                    # Calculate bag quantity (200 drills per bag)
-                    bag_qty = -(-count // 200)  # Ceiling division
-                    
-                    writer.writerow({
-                        'dmc_code': color.dmc_code,
-                        'name': color.name,
-                        'hex': color.hex,
-                        'cluster_id': idx,  # 0-6 matching fixed palette order
-                        'drill_count': int(count),
-                        'bag_qty_200pcs': bag_qty,
-                        'deltaE_mean': round(quality_metrics.delta_e_mean, 2),
-                        'deltaE_max': round(quality_metrics.delta_e_max, 2)
-                    })
+            for idx, color in enumerate(grid_map.palette_colors):
+                count = color_usage.get(color.dmc_code, 0)
+                bag_qty = -(-count // 200)  # Ceiling division
+                
+                writer.writerow({
+                    'dmc_code': color.dmc_code,
+                    'name': color.name,
+                    'hex': color.hex,
+                    'cluster_id': idx,
+                    'drill_count': int(count),
+                    'bag_qty_200pcs': bag_qty,
+                    'deltaE_mean': round(quality_metrics.delta_e_mean, 2),
+                    'deltaE_max': round(quality_metrics.delta_e_max, 2)
+                })
         
         return csv_path
     
-    def _generate_json_metadata(self, grid_map, quality_metrics,
-                             scale_factor: float, output_dir: str) -> str:
-        """Generate exact JSON metadata format as specified."""
-        json_path = os.path.join(output_dir, "metadata.json")
-        
-        # Count color usage for metadata
-        h, w = grid_map.grid_data.shape
-        unique_indices, counts = np.unique(grid_map.grid_data, return_counts=True)
-        
-        color_usage = {}
-        for idx, count in zip(unique_indices, counts):
-            if idx < len(grid_map.palette_colors):
-                color = grid_map.palette_colors[idx]
-                color_usage[color.dmc_code] = int(count)
-        
-        metadata = {
-            "paper_mm": [self.print_specs.paper_width_mm, self.print_specs.paper_height_mm],
-            "dpi": self.print_specs.dpi,
-            "margins_mm": self.print_specs.margin_mm,
-            "cell_mm": self.print_specs.cell_size_mm,
-            "grid_cols": grid_map.grid_specs.cols,
-            "grid_rows": grid_map.grid_specs.rows,
-            "total_cells": grid_map.grid_specs.total_cells,
-            "pages": len(self.print_engine.calculate_tiling(grid_map.grid_specs)),
-            "style": grid_map.style_name,
-            "fixed_palette": True,
-            "fixed_palette_dmc": [color.dmc_code for color in grid_map.palette_colors],
-            "deltaE_stats": {
-                "mean": round(quality_metrics.delta_e_mean, 2),
-                "max": round(quality_metrics.delta_e_max, 2),
-                "std": round(quality_metrics.delta_e_std, 2)
-            },
-            "ssim": round(quality_metrics.ssim_score, 4),
-            "crop_rect_norm": None,  # Could be populated from smart cropping
-            "tiling_map": self._generate_tiling_map(grid_map.grid_specs),
-            "grid_index_map_hash": grid_map.grid_hash,
-            "color_usage": color_usage,
-            "scale_factor": round(scale_factor, 3),
-            "print_metrics": self.print_engine.calculate_print_metrics(grid_map.grid_specs)
-        }
-        
-        with open(json_path, 'w') as f:
-            json.dump(metadata, f, indent=2, default=str)
-        
-        return json_path
     
     def _generate_tiling_map(self, grid_specs) -> List[Dict]:
         """Generate tiling map for PDF generation."""
@@ -552,7 +313,23 @@ class DiamondKitGenerator:
         
         return tiling_map
     
-    def _generate_pdf_kit(self, grid_map, original_rgb: np.ndarray,
+    def _write_metadata_bundle(self, metadata: Dict[str, Any], output_dir: str) -> Dict[str, str]:
+        """Persist metadata in both primary and legacy filenames."""
+        kit_meta_path = os.path.join(output_dir, "kit_metadata.json")
+        with open(kit_meta_path, 'w', encoding='utf-8') as fh:
+            json.dump(metadata, fh, indent=2, default=str)
+        
+        legacy_path = os.path.join(output_dir, "metadata.json")
+        with open(legacy_path, 'w', encoding='utf-8') as fh:
+            json.dump(metadata, fh, indent=2, default=str)
+        
+        return {
+            "kit_metadata": kit_meta_path,
+            "metadata_legacy": legacy_path,
+            "json_metadata": kit_meta_path,  # backwards compatibility
+        }
+    
+    def _generate_pdf_kit(self, grid_map,
                          output_dir: str, style_name: str, quality_metrics=None, scale_factor=1.0) -> str:
         """Generate QBRIX PDF kit using new PDF generator."""
         try:
@@ -566,7 +343,7 @@ class DiamondKitGenerator:
             if quality_metrics is not None:
                 metadata = {
                     'filename': os.path.basename(output_dir),
-                    'grid_size': f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
+                    'grid_size': f"{grid_map.grid_specs.cols}x{grid_map.grid_specs.rows}",
                     'total_cells': grid_map.grid_specs.total_cells,
                     'colors_used': len(grid_map.palette_colors),
                     'style': style_name,
@@ -582,7 +359,7 @@ class DiamondKitGenerator:
             else:
                 metadata = {
                     'filename': os.path.basename(output_dir),
-                    'grid_size': f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
+                    'grid_size': f"{grid_map.grid_specs.cols}x{grid_map.grid_specs.rows}",
                     'total_cells': grid_map.grid_specs.total_cells,
                     'colors_used': len(grid_map.palette_colors),
                     'style': style_name,
@@ -614,50 +391,98 @@ class DiamondKitGenerator:
                 f.write("QBRIX PDF generation failed. Please check console for errors.")
             return pdf_path
     
-    def _compile_comprehensive_metadata(self, grid_map, quality_metrics,
-                                  scale_factor: float, crop_rect, outputs: Dict) -> Dict[str, Any]:
+    def _compile_comprehensive_metadata(self, grid_map, quality_metrics, quality_result,
+                                  scale_factor: float, preprocess_result: PreprocessResult,
+                                  outputs: Dict[str, str]) -> Dict[str, Any]:
         """Compile comprehensive metadata for kit."""
-        return {
+        color_usage = self._build_color_usage(grid_map)
+        tiling_map = self._generate_tiling_map(grid_map.grid_specs)
+        palette_codes = [color.dmc_code for color in grid_map.palette_colors]
+        output_manifest = {key: os.path.basename(path) for key, path in outputs.items()}
+        processing_meta = {
+            "long_side_px": self.processing_settings.long_side_px,
+            "min_long_side_px": self.processing_settings.min_long_side_px,
+            "smoothing_kernel": self.processing_settings.smoothing_kernel,
+            "smoothing_enabled": self.processing_settings.smoothing_enabled,
+            "popart_edge_bias": self.processing_settings.popart_edge_bias,
+            "popart_edge_threshold": self.processing_settings.popart_edge_threshold,
+        }
+        
+        pattern_pages = len(tiling_map)
+        
+        metadata = {
+            "paper_mm": [self.print_specs.paper_width_mm, self.print_specs.paper_height_mm],
+            "dpi": self.print_specs.dpi,
+            "margins_mm": self.print_specs.margin_mm,
+            "cell_mm": self.print_specs.cell_size_mm,
+            "grid_cols": grid_map.grid_specs.cols,
+            "grid_rows": grid_map.grid_specs.rows,
+            "total_cells": grid_map.grid_specs.total_cells,
+            "pages": pattern_pages + 3,  # title + legend + instructions + pattern tiles
+            "pattern_pages": pattern_pages,
+            "style": grid_map.style_name,
+            "fixed_palette": True,
+            "fixed_palette_dmc": palette_codes,
+            "grid_index_map_hash": grid_map.grid_hash,
+            "deltaE_stats": {
+                "mean": round(quality_metrics.delta_e_mean, 2),
+                "max": round(quality_metrics.delta_e_max, 2),
+                "std": round(quality_metrics.delta_e_std, 2),
+            },
+            "ssim": round(quality_metrics.ssim_score, 4),
+            "crop_rect_norm": preprocess_result.crop_rect_norm,
+            "tiling_map": tiling_map,
+            "color_usage": color_usage,
+            "scale_factor": round(scale_factor, 3),
+            "quality_warnings": quality_metrics.quality_warnings,
+            "quality_risks": quality_metrics.quality_risks,
+            "preprocessing": preprocess_result.metadata,
+            "processing_settings": processing_meta,
             "generation_info": {
                 "style": grid_map.style_name,
                 "grid_hash": grid_map.grid_hash,
                 "scale_factor": scale_factor,
-                "crop_applied": crop_rect is not None
+                "crop_applied": preprocess_result.crop_rect_norm is not None,
             },
             "grid_specifications": {
-                "dimensions": f"{grid_map.grid_specs.cols}×{grid_map.grid_specs.rows}",
+                "cols": grid_map.grid_specs.cols,
+                "rows": grid_map.grid_specs.rows,
                 "total_cells": grid_map.grid_specs.total_cells,
                 "cell_size_mm": self.print_specs.cell_size_mm,
                 "print_area_mm": (
                     grid_map.grid_specs.cols * self.print_specs.cell_size_mm,
-                    grid_map.grid_specs.rows * self.print_specs.cell_size_mm
-                )
+                    grid_map.grid_specs.rows * self.print_specs.cell_size_mm,
+                ),
             },
             "quality_assessment": {
                 "overall_quality": quality_metrics.overall_quality,
                 "ssim_score": quality_metrics.ssim_score,
                 "delta_e_mean": quality_metrics.delta_e_mean,
                 "delta_e_max": quality_metrics.delta_e_max,
+                "delta_e_std": quality_metrics.delta_e_std,
+                "color_distribution": quality_metrics.color_distribution,
+                "rare_colors": quality_metrics.rare_colors,
+                "auto_fixes": quality_metrics.auto_fixes,
                 "warnings": quality_metrics.quality_warnings,
-                "risks": quality_metrics.quality_risks
+                "risks": quality_metrics.quality_risks,
+            },
+            "quality_gates": {
+                "passed": quality_result.passed,
+                "warnings": quality_result.warnings,
+                "errors": quality_result.errors,
+                "auto_fixes": quality_result.auto_fixes,
+                "metrics": quality_result.metrics,
             },
             "palette_info": {
                 "style_name": grid_map.style_name,
                 "total_colors": len(grid_map.palette_colors),
-                "dmc_codes": [color.dmc_code for color in grid_map.palette_colors],
-                "color_distribution": quality_metrics.color_distribution,
-                "rare_colors": quality_metrics.rare_colors
+                "dmc_codes": palette_codes,
             },
-            "output_files": {
-                key: os.path.basename(path) for key, path in outputs.items()
-            },
-            "print_specifications": {
-                "paper_size": "A4",
-                "dpi": self.print_specs.dpi,
-                "margins_mm": self.print_specs.margin_mm,
-                "total_pages": len(self.print_engine.calculate_tiling(grid_map.grid_specs))
-            }
+            "output_files": output_manifest,
+            "print_specifications": self.print_engine.calculate_print_metrics(grid_map.grid_specs),
         }
+        
+        return metadata
 
 
 def generate_diamond_kit(image_path: str, style_name: str, output_dir: str,

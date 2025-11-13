@@ -55,12 +55,12 @@ class ExportManager:
             self._export_json_manifest(canvas_grid, metadata, kit_id)
             self._export_preview(preview_image, kit_id)
             
-            print(f"✓ Kit exported successfully to {self.output_dir}")
+            print(f"[OK] Kit exported successfully to {self.output_dir}")
             print(f"  Kit ID: {kit_id}")
             return True
             
         except Exception as e:
-            print(f"✗ Export failed: {e}")
+            print(f"[X] Export failed: {e}")
             return False
     
     def _export_pdf(self, canvas_grid: CanvasGrid, 
@@ -274,7 +274,7 @@ class ExportManager:
         grid_path = os.path.join(self.output_dir, f"diamond_kit_{kit_id}_grid.json")
         
         if canvas_grid.grid_data is None:
-            print("  ⚠ No grid data available for export")
+            print("  [WARN] No grid data available for export")
             return
         
         # Convert grid to more serializable format

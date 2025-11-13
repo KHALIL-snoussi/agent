@@ -5,6 +5,7 @@ Fixed 7-color DMC palettes with numeric grids and professional assembly instruct
 
 import os
 import math
+import io
 from typing import List, Tuple, Dict, Any
 from reportlab.lib.pagesizes import A4, landscape
 from reportlab.lib.units import mm, cm
@@ -45,11 +46,14 @@ class QBRIXPDFGenerator:
         
         # Symbol font settings (digits 1-7)
         self.symbol_font = "Helvetica-Bold"
-        self.symbol_font_size_pt = self.cell_size_pt * 0.4  # 40% of cell size
+        minimum_font_pt = (1.2 / 25.4) * 72.0 / 0.72  # ensure >=1.2mm x-height
+        self.symbol_font_size_pt = max(self.cell_size_pt * 0.58, minimum_font_pt)
+        self.column_label_font_pt = 6.0
         
         # Verify symbol legibility
-        self.x_height_mm = self.cell_size_mm * 0.43  # Approximate x-height for digits
-        self.stroke_thickness_mm = self.cell_size_mm * 0.08  # 8% of cell size
+        self.x_height_mm = (self.symbol_font_size_pt / 72.0) * 25.4 * 0.72
+        self.stroke_thickness_mm = max(0.15, self.cell_size_mm * 0.08)
+        self.overlap_fill = Color(0.92, 0.92, 0.96)
     
     def generate_qbrix_pdf(self, grid_map: GridIndexMap, 
                           preview_image: np.ndarray,
@@ -177,7 +181,10 @@ class QBRIXPDFGenerator:
                 preview_height = preview_width / img_aspect
             
             # Convert to ReportLab Image
-            rl_image = RLImage(pil_preview, 
+            buffer = io.BytesIO()
+            pil_preview.save(buffer, format="PNG")
+            buffer.seek(0)
+            rl_image = RLImage(buffer, 
                               width=preview_width, 
                               height=preview_height)
             
@@ -189,7 +196,7 @@ class QBRIXPDFGenerator:
             ])
             
             content.append(image_container)
-            print(f"Added prominent preview image: {preview_width:.0f}×{preview_height:.0f} points")
+            print(f"Added prominent preview image: {preview_width:.0f}x{preview_height:.0f} points")
             
         except Exception as e:
             print(f"Warning: Could not add preview image to title page: {e}")
@@ -202,7 +209,7 @@ class QBRIXPDFGenerator:
         # COMPACT SPECIFICATIONS TABLE - Two columns for better layout
         specs_left = [
             ['Specification', 'Value'],
-            ['Grid Size', f"{grid_map.grid_specs.cols} × {grid_map.grid_specs.rows}"],
+            ['Grid Size', f"{grid_map.grid_specs.cols} x {grid_map.grid_specs.rows}"],
             ['Total Cells', f"{grid_map.grid_specs.total_cells:,}"],
             ['Cell Size', f"{self.cell_size_mm:.1f} mm"],
             ['Print DPI', f"{self.dpi}"],
@@ -262,12 +269,12 @@ class QBRIXPDFGenerator:
         
         quality_data = [
             ['Metric', 'Value', 'Status'],
-            ['ΔE2000 Mean', f"{deltaE_mean}" if deltaE_mean != 'N/A' else 'N/A', 
-             '✓ Good' if isinstance(deltaE_mean, (int, float)) and deltaE_mean < 40 else '⚠ Check'],
-            ['ΔE2000 Max', f"{deltaE_max}" if deltaE_max != 'N/A' else 'N/A',
-             '✓ Good' if isinstance(deltaE_max, (int, float)) and deltaE_max < 60 else '⚠ Check'],
+            ['DeltaE2000 Mean', f"{deltaE_mean}" if deltaE_mean != 'N/A' else 'N/A', 
+             'OK' if isinstance(deltaE_mean, (int, float)) and deltaE_mean <= 8 else 'Check'],
+            ['DeltaE2000 Max', f"{deltaE_max}" if deltaE_max != 'N/A' else 'N/A',
+             'OK' if isinstance(deltaE_max, (int, float)) and deltaE_max <= 12 else 'Check'],
             ['SSIM Score', f"{ssim}" if ssim != 'N/A' else 'N/A',
-             '✓ Good' if isinstance(ssim, (int, float)) and ssim > 0.6 else '⚠ Check'],
+             'OK' if isinstance(ssim, (int, float)) and ssim >= 0.75 else 'Check'],
             ['Scale Factor', f"{scale_factor:.2f}" if scale_factor != 1.0 else '1.00', 'Normal']
         ]
         
@@ -284,12 +291,12 @@ class QBRIXPDFGenerator:
         content.append(quality_table)
         
         # Warnings section (if any)
-        warnings = metadata.get('warnings', [])
+        warnings = metadata.get('quality_warnings') or metadata.get('quality_assessment', {}).get('warnings', [])
         if warnings:
             content.append(Spacer(1, 10))
-            content.append(Paragraph("⚠ Quality Warnings", heading_style))
+            content.append(Paragraph("[WARN] Quality Warnings", heading_style))
             for warning in warnings[:3]:  # Limit to first 3 warnings
-                content.append(Paragraph(f"• {warning}", normal_style))
+                content.append(Paragraph(f"- {warning}", normal_style))
         
         # Assembly tips footer
         content.append(Spacer(1, 15))
@@ -372,14 +379,14 @@ class QBRIXPDFGenerator:
         
         summary_text = f"""
         <b>Summary:</b><br/>
-        • Style: {grid_map.style_name.upper()}<br/>
-        • Total Colors: 7 (fixed palette)<br/>
-        • Colors Used: {len(unique_indices)}<br/>
-        • Total Drills: {total_drills:,}<br/>
-        • Total Bags (200 drills each): {total_bags}<br/>
-        • Grid Hash: {grid_map.grid_hash}<br/>
-        • Cell Size: {self.cell_size_mm:.1f}mm<br/>
-        • Print Quality: {self.dpi} DPI
+        - Style: {grid_map.style_name.upper()}<br/>
+        - Total Colors: 7 (fixed palette)<br/>
+        - Colors Used: {len(unique_indices)}<br/>
+        - Total Drills: {total_drills:,}<br/>
+        - Total Bags (200 drills each): {total_bags}<br/>
+        - Grid Hash: {grid_map.grid_hash}<br/>
+        - Cell Size: {self.cell_size_mm:.1f}mm<br/>
+        - Print Quality: {self.dpi} DPI
         """
         
         content.append(Paragraph(summary_text, styles['Normal']))
@@ -402,43 +409,35 @@ class QBRIXPDFGenerator:
         
         # Kit-specific information
         kit_info = [
-            f"<b>Kit Specifications:</b>",
-            f"• Style: {grid_map.style_name.upper()} with 7 fixed DMC colors",
-            f"• Grid size: {grid_map.grid_specs.cols} × {grid_map.grid_specs.rows} ({grid_map.grid_specs.total_cells:,} cells)",
-            f"• Cell size: {self.cell_size_mm:.1f}mm (symbol x-height: {self.x_height_mm:.2f}mm)",
-            f"• Print settings: {self.dpi} DPI, {self.margin_mm:.0f}mm margins",
-            f"• Total pattern pages: {len(tiles)}",
+            "<b>Kit Specifications:</b>",
+            f"- Style: {grid_map.style_name.upper()} fixed 7-color DMC palette",
+            f"- Grid size: {grid_map.grid_specs.cols} x {grid_map.grid_specs.rows} ({grid_map.grid_specs.total_cells:,} cells)",
+            f"- Cell size: {self.cell_size_mm:.1f} mm (symbol x-height ~ {self.x_height_mm:.2f} mm)",
+            f"- Print settings: {self.dpi} DPI, {self.margin_mm:.0f} mm margins",
+            f"- Pattern pages: {len(tiles)} (plus cover/legend/instructions)",
             "",
-            "<b>Printing Instructions:</b>",
-            "• Print at 100% scale - do not fit or scale to page",
-            "• Use A4 paper in landscape orientation",
-            "• Ensure print quality is set to high (300+ DPI)",
-            "• Check that crop marks and registration crosses are visible",
+            "<b>Printing:</b>",
+            "- Print each PDF page at 100% scale (no fit-to-page).",
+            "- Use A4 landscape paper and high-quality printing mode.",
+            "- Verify that crop marks and registration crosses remain visible.",
             "",
-            "<b>Page Assembly:</b>",
-            f"• This kit contains {len(tiles)} pattern pages plus reference pages",
-            "• Each pattern page shows a section of the complete grid",
-            "• Pages use numeric symbols 1-7 corresponding to the legend",
-            "• Coordinate labels help with page alignment",
+            "<b>Assembly & Overlaps:</b>",
+            f"- Numeric symbols 1-7 reference the fixed palette legend.",
+            f"- Each tile includes a {self.print_specs.overlap_cells}-cell overlap on touching edges; shaded cells indicate where to align/trim.",
+            "- Use the row/column numbers on every border to keep tiles aligned.",
+            "- Registration crosses help verify orientation before taping pages together.",
             "",
-            "<b>Cutting and Alignment:</b>",
-            "• Cut pages along the outer crop marks",
-            "• Use registration crosses to align adjacent pages",
-            f"• Pages may have {self.print_specs.overlap_cells} cell overlaps for easier matching",
-            "• Trim overlaps as needed for your assembly method",
+            "<b>Navigation:</b>",
+            "- The mini-map highlights the active tile-follow it row by row.",
+            "- Work top-to-bottom, left-to-right, marking completed tiles as you go.",
             "",
             "<b>Diamond Placement:</b>",
-            "• Work with one color at a time using the legend",
-            "• Match symbols on pages to symbols on your adhesive canvas",
-            "• Use the coordinate system to track your progress",
-            "• Symbols 1-7 correspond to the fixed DMC palette colors",
+            "- Match each digit to the legend, completing one color bag at a time.",
+            "- Keep unused adhesive covered and press placed drills firmly.",
             "",
-            "<b>Tips for Best Results:</b>",
-            "• Work from top to bottom, left to right",
-            "• Keep the protective film on unused areas",
-            "• Use a roller or flat object to press down placed diamonds",
-            "• Take breaks to maintain accuracy and reduce eye strain",
-            "• Store unused diamonds in their original bags"
+            "<b>Tips:</b>",
+            "- Store leftover drills in their labeled bags for quick access.",
+            "- Take breaks to maintain accuracy and reduce eye strain."
         ]
         
         for instruction in kit_info:
@@ -483,7 +482,7 @@ class QBRIXPDFGenerator:
                 canvas.saveState()
                 
                 # Add QBRIX page header
-                pdf_gen._add_qbrix_page_header(canvas, self.tile)
+                pdf_gen._add_qbrix_page_header(canvas, self.tile, self.grid_map.style_name)
                 
                 # Add crop marks and registration crosses
                 pdf_gen._add_qbrix_crop_marks(canvas)
@@ -513,28 +512,34 @@ class QBRIXPDFGenerator:
         
         return content
     
-    def _add_qbrix_page_header(self, pdf_canvas, tile):
+    def _add_qbrix_page_header(self, pdf_canvas, tile, style_name: str):
         """Add QBRIX page header with tile information."""
         pdf_canvas.setFont("Helvetica-Bold", 12)
+        header_text = (
+            f"Assembly Page {tile.page_number}/{tile.total_pages} - {style_name.title()} Style"
+        )
         pdf_canvas.drawString(
-            self.margin_pt, 
+            self.margin_pt,
             self.page_h - self.margin_pt - 15,
-            f"Assembly Page {tile.page_number} of {tile.total_pages}"
+            header_text
         )
         
         pdf_canvas.setFont("Helvetica", 9)
+        coord_text = (
+            f"Columns {tile.x_start+1}-{tile.x_start+tile.tile_cols} | "
+            f"Rows {tile.y_start+1}-{tile.y_start+tile.tile_rows}"
+        )
         pdf_canvas.drawString(
             self.margin_pt,
             self.page_h - self.margin_pt - 30,
-            f"QBRIX Kit - Fixed 7-Color Palette"
-        )
-        
-        # Tile coordinates
-        coord_text = f"C{tile.x_start+1}-{tile.x_start+tile.tile_cols} : R{tile.y_start+1}-{tile.y_start+tile.tile_rows}"
-        pdf_canvas.drawString(
-            self.page_w - self.margin_pt - pdf_canvas.stringWidth(coord_text, "Helvetica", 9),
-            self.page_h - self.margin_pt - 30,
             coord_text
+        )
+        overlap_text = f"{self.print_specs.overlap_cells}-cell overlap shaded on edges"
+        text_width = pdf_canvas.stringWidth(overlap_text, "Helvetica", 9)
+        pdf_canvas.drawString(
+            self.page_w - self.margin_pt - text_width,
+            self.page_h - self.margin_pt - 30,
+            overlap_text
         )
     
     def _add_qbrix_crop_marks(self, pdf_canvas):
@@ -580,9 +585,24 @@ class QBRIXPDFGenerator:
         tile_width = tile.tile_cols * self.cell_size_pt
         tile_height = tile.tile_rows * self.cell_size_pt
         
-        # Center tile on page
-        start_x = (self.page_w - tile_width) / 2
-        start_y = (self.page_h - tile_height) / 2
+        # Align tile within printable area (anchored to margins)
+        start_x = self.margin_pt
+        start_y = self.margin_pt
+        
+        overlap = min(self.print_specs.overlap_cells, tile.tile_cols, tile.tile_rows)
+        if overlap > 0:
+            overlap_width = overlap * self.cell_size_pt
+            pdf_canvas.saveState()
+            pdf_canvas.setFillColor(self.overlap_fill)
+            if tile.x_start > 0:
+                pdf_canvas.rect(start_x, start_y, overlap_width, tile_height, fill=1, stroke=0)
+            if tile.x_start + tile.tile_cols < grid_map.grid_specs.cols:
+                pdf_canvas.rect(start_x + tile_width - overlap_width, start_y, overlap_width, tile_height, fill=1, stroke=0)
+            if tile.y_start > 0:
+                pdf_canvas.rect(start_x, start_y, tile_width, overlap_width, fill=1, stroke=0)
+            if tile.y_start + tile.tile_rows < grid_map.grid_specs.rows:
+                pdf_canvas.rect(start_x, start_y + tile_height - overlap_width, tile_width, overlap_width, fill=1, stroke=0)
+            pdf_canvas.restoreState()
         
         # Set line width for grid
         pdf_canvas.setLineWidth(0.3)  # 0.3pt lines for clarity
@@ -628,40 +648,41 @@ class QBRIXPDFGenerator:
     
     def _add_qbrix_coordinate_labels(self, pdf_canvas, tile):
         """Add QBRIX coordinate labels around the grid."""
-        # Calculate tile boundaries
+        # Calculate tile boundaries (anchored to printable area)
         tile_width = tile.tile_cols * self.cell_size_pt
         tile_height = tile.tile_rows * self.cell_size_pt
         
-        start_x = (self.page_w - tile_width) / 2
-        start_y = (self.page_h - tile_height) / 2
+        start_x = self.margin_pt
+        start_y = self.margin_pt
         
         pdf_canvas.setFont("Helvetica", 8)
         pdf_canvas.setFillColor(black)
         
-        # Column labels (top and bottom) - show every 5th column
-        for x in range(0, tile.tile_cols, 5):
+        pdf_canvas.setFont("Helvetica", self.column_label_font_pt)
+        # Column labels (top and bottom) - label every column for clarity
+        for x in range(0, tile.tile_cols):
             col_num = tile.x_start + x + 1  # 1-based indexing
             x_pos = start_x + x * self.cell_size_pt + self.cell_size_pt / 2
             
             # Top label
-            text_width = pdf_canvas.stringWidth(str(col_num), "Helvetica", 8)
+            text_width = pdf_canvas.stringWidth(str(col_num), "Helvetica", self.column_label_font_pt)
             pdf_canvas.drawString(x_pos - text_width/2, start_y + tile_height + 3, str(col_num))
             
             # Bottom label
-            pdf_canvas.drawString(x_pos - text_width/2, start_y - 8, str(col_num))
+            pdf_canvas.drawString(x_pos - text_width/2, start_y - self.column_label_font_pt - 3, str(col_num))
         
-        # Row labels (left and right) - show every 5th row
-        for y in range(0, tile.tile_rows, 5):
+        # Row labels (left and right) - label every row
+        for y in range(0, tile.tile_rows):
             row_num = tile.y_start + y + 1  # 1-based indexing
             y_pos = start_y + (tile.tile_rows - 1 - y) * self.cell_size_pt + self.cell_size_pt / 2
             
-            text_width = pdf_canvas.stringWidth(str(row_num), "Helvetica", 8)
-            
             # Left label
-            pdf_canvas.drawString(start_y - text_width - 5, y_pos, str(row_num))
+            left_text = str(row_num)
+            text_width = pdf_canvas.stringWidth(left_text, "Helvetica", self.column_label_font_pt)
+            pdf_canvas.drawString(start_x - text_width - 5, y_pos - self.column_label_font_pt / 2, left_text)
             
             # Right label
-            pdf_canvas.drawString(start_x + tile_width + 5, y_pos, str(row_num))
+            pdf_canvas.drawString(start_x + tile_width + 5, y_pos - self.column_label_font_pt / 2, left_text)
     
     def _add_qbrix_minimap(self, pdf_canvas, grid_map: GridIndexMap, tile):
         """Add mini-map showing tile position in full grid."""
@@ -671,9 +692,9 @@ class QBRIXPDFGenerator:
         map_x = self.page_w - self.margin_pt - map_w - 5
         map_y = self.margin_pt + 5
         
-        # Draw mini-map border
-        pdf_canvas.setLineWidth(0.5)
-        pdf_canvas.rect(map_x, map_y, map_w, map_h, fill=0, stroke=1)
+        # Draw mini-map border and background
+        pdf_canvas.setFillColor(white)
+        pdf_canvas.rect(map_x, map_y, map_w, map_h, fill=1, stroke=1)
         
         # Calculate scale factors
         scale_x = map_w / grid_map.grid_specs.cols
@@ -688,9 +709,33 @@ class QBRIXPDFGenerator:
         pdf_canvas.setFillColor(lightgrey)
         pdf_canvas.rect(tile_x, tile_y, tile_w, tile_h, fill=1, stroke=1)
         
+        # Visualize overlaps relative to tile bounds
+        overlap = self.print_specs.overlap_cells
+        if overlap > 0:
+            pdf_canvas.saveState()
+            pdf_canvas.setFillColor(self.overlap_fill)
+            overlap_w = min(overlap, tile.tile_cols) * scale_x
+            overlap_h = min(overlap, tile.tile_rows) * scale_y
+            
+            if tile.x_start > 0:
+                pdf_canvas.rect(tile_x, tile_y, overlap_w, tile_h, fill=1, stroke=0)
+            if tile.x_start + tile.tile_cols < grid_map.grid_specs.cols:
+                pdf_canvas.rect(tile_x + tile_w - overlap_w, tile_y, overlap_w, tile_h, fill=1, stroke=0)
+            if tile.y_start > 0:
+                pdf_canvas.rect(tile_x, tile_y + tile_h - overlap_h, tile_w, overlap_h, fill=1, stroke=0)
+            if tile.y_start + tile.tile_rows < grid_map.grid_specs.rows:
+                pdf_canvas.rect(tile_x, tile_y, tile_w, overlap_h, fill=1, stroke=0)
+            pdf_canvas.restoreState()
+        
         # Add label
         pdf_canvas.setFont("Helvetica", 7)
         pdf_canvas.setFillColor(black)
-        label_text = "Position"
+        label_text = "Tile position (dark edges show overlaps)"
         text_width = pdf_canvas.stringWidth(label_text, "Helvetica", 7)
         pdf_canvas.drawString(map_x + map_w/2 - text_width/2, map_y + map_h + 3, label_text)
+        pdf_canvas.setFont("Helvetica", 6)
+        pdf_canvas.drawString(
+            map_x,
+            map_y - 8,
+            f"{self.print_specs.overlap_cells}-cell overlaps shaded"
+        )

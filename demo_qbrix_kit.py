@@ -76,18 +76,18 @@ def demo_generate_kit(image_path: str, style: str, output_dir: str,
         print("GENERATION RESULTS")
         print("=" * 60)
         
-        print(f"✓ Kit generated successfully!")
-        print(f"✓ Grid size: {grid_specs.cols} × {grid_specs.rows} ({grid_specs.total_cells:,} cells)")
-        print(f"✓ Total pages: {metadata['print_specifications']['total_pages']}")
-        print(f"✓ Style: {metadata['generation_info']['style']}")
-        print(f"✓ Grid hash: {metadata['generation_info']['grid_hash']}")
+        print(f"[OK] Kit generated successfully!")
+        print(f"[OK] Grid size: {grid_specs.cols} x {grid_specs.rows} ({grid_specs.total_cells:,} cells)")
+        print(f"[OK] Total pages: {metadata['print_specifications']['total_pages']}")
+        print(f"[OK] Style: {metadata['generation_info']['style']}")
+        print(f"[OK] Grid hash: {metadata['generation_info']['grid_hash']}")
         
         # Quality metrics
         quality_assessment = metadata['quality_assessment']
         print(f"\nQuality Assessment:")
         print(f"  Overall Quality: {quality_assessment['overall_quality']}")
-        print(f"  ΔE2000 Mean: {metadata['quality_assessment'].get('delta_e_mean', 0):.2f}")
-        print(f"  ΔE2000 Max: {metadata['quality_assessment'].get('delta_e_max', 0):.2f}")
+        print(f"  DeltaE2000 Mean: {metadata['quality_assessment'].get('delta_e_mean', 0):.2f}")
+        print(f"  DeltaE2000 Max: {metadata['quality_assessment'].get('delta_e_max', 0):.2f}")
         print(f"  SSIM: {metadata['ssim']:.4f}")
         print(f"  Scale Factor: {metadata['scale_factor']:.3f}")
         
@@ -95,26 +95,26 @@ def demo_generate_kit(image_path: str, style: str, output_dir: str,
         if quality_assessment['warnings']:
             print(f"\nWarnings:")
             for warning in quality_assessment['warnings']:
-                print(f"  ⚠ {warning}")
+                print(f"  [WARN] {warning}")
         
         if quality_assessment['risks']:
             print(f"\nRisks:")
             for risk in quality_assessment['risks']:
-                print(f"  ⚠ {risk}")
+                print(f"  [WARN] {risk}")
         
         # Quality gates
         if 'quality_gates' in metadata:
             quality_gates = metadata['quality_gates']
             print(f"\nQuality Gates:")
-            print(f"  Passed: {'✓' if quality_gates['passed'] else '✗'}")
+            print(f"  Passed: {'[OK]' if quality_gates['passed'] else '[X]'}")
             
             if quality_gates['warnings']:
                 for warning in quality_gates['warnings']:
-                    print(f"  ⚠ {warning}")
+                    print(f"  [WARN] {warning}")
             
             if quality_gates['errors']:
                 for error in quality_gates['errors']:
-                    print(f"  ✗ {error}")
+                    print(f"  [X] {error}")
         
         # Generated files
         print(f"\nGenerated Files:")
@@ -122,19 +122,20 @@ def demo_generate_kit(image_path: str, style: str, output_dir: str,
             file_path = os.path.join(output_dir, filename)
             if os.path.exists(file_path):
                 size_mb = os.path.getsize(file_path) / (1024 * 1024)
-                print(f"  ✓ {filename} ({size_mb:.1f} MB)")
+                print(f"  [OK] {filename} ({size_mb:.1f} MB)")
             else:
-                print(f"  ✗ {filename} (missing)")
+                print(f"  [X] {filename} (missing)")
         
         # Color usage
-        palette_info = metadata['palette_info']
         print(f"\nColor Usage (7-color fixed palette):")
-        total_used = len(palette_info['color_distribution'])
+        color_distribution = metadata.get('quality_assessment', {}).get('color_distribution', {})
+        total_used = sum(1 for pct in color_distribution.values() if pct > 0)
         print(f"  Colors used: {total_used}/7")
         
-        if palette_info['rare_colors']:
-            print(f"  Rare colors (< 2%): {len(palette_info['rare_colors'])}")
-            for rare_color in palette_info['rare_colors'][:3]:  # Show first 3
+        rare_colors = metadata.get('quality_assessment', {}).get('rare_colors', [])
+        if rare_colors:
+            print(f"  Rare colors (< 2%): {len(rare_colors)}")
+            for rare_color in rare_colors[:3]:  # Show first 3
                 print(f"    - {rare_color}")
         
         print("\n" + "=" * 60)
@@ -142,19 +143,19 @@ def demo_generate_kit(image_path: str, style: str, output_dir: str,
         print("=" * 60)
         print(f"Output directory: {output_dir}")
         print("Files generated:")
-        print("  • diamond_painting_kit.pdf - QBRIX instruction booklet")
-        print("  • inventory.csv - Drill inventory with bag quantities")
-        print("  • metadata.json - Complete kit metadata")
-        print("  • original_preview.jpg - Input image preview")
-        print("  • quantized_preview.jpg - Palette-mapped preview")
-        print("  • preview_original.jpg - Original style preview")
-        print("  • preview_vintage.jpg - Vintage style preview")
-        print("  • preview_popart.jpg - Popart style preview")
+        print("  - diamond_painting_kit.pdf - QBRIX instruction booklet")
+        print("  - inventory.csv - Drill inventory with bag quantities")
+        print("  - kit_metadata.json - Complete kit metadata")
+        print("  - original_preview.jpg - Input image preview")
+        print("  - quantized_preview.jpg - Palette-mapped preview")
+        print("  - original_style_preview.jpg - Original style preview")
+        print("  - vintage_style_preview.jpg - Vintage style preview")
+        print("  - popart_style_preview.jpg - Popart style preview")
         
         return results
         
     except Exception as e:
-        print(f"\n✗ Kit generation failed: {e}")
+        print(f"\n[X] Kit generation failed: {e}")
         import traceback
         traceback.print_exc()
         return None
@@ -196,13 +197,13 @@ def demo_all_styles(image_path: str, base_output_dir: str):
                 grid_specs = result["grid_specs"]
                 
                 print(f"\n{style} Summary:")
-                print(f"  Grid: {grid_specs.cols}×{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
-                print(f"  ΔE Mean: {metadata['quality_assessment'].get('delta_e_mean', 0):.2f}")
+                print(f"  Grid: {grid_specs.cols}x{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
+                print(f"  DeltaE Mean: {metadata['quality_assessment'].get('delta_e_mean', 0):.2f}")
                 print(f"  SSIM: {metadata['ssim']:.3f}")
                 print(f"  Quality: {metadata['quality_assessment']['overall_quality']}")
                 
         except Exception as e:
-            print(f"✗ {style} generation failed: {e}")
+            print(f"[X] {style} generation failed: {e}")
     
     # Final comparison
     print("\n" + "=" * 60)
@@ -210,7 +211,7 @@ def demo_all_styles(image_path: str, base_output_dir: str):
     print("=" * 60)
     
     if results:
-        print(f"{'Style':<10} {'Cells':<8} {'ΔE Mean':<9} {'SSIM':<6} {'Quality':<12}")
+        print(f"{'Style':<10} {'Cells':<8} {'DeltaE Mean':<9} {'SSIM':<6} {'Quality':<12}")
         print("-" * 50)
         
         for style, result in results.items():

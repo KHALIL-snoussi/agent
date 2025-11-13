@@ -71,7 +71,7 @@ class ImageLoader:
             'color_space': 'Lab'
         })
         
-        print(f"Image processed: {metadata['final_size'][0]}×{metadata['final_size'][1]} pixels")
+        print(f"Image processed: {metadata['final_size'][0]}x{metadata['final_size'][1]} pixels")
         
         return lab_image, metadata
     
@@ -134,7 +134,7 @@ class ImageLoader:
             y_end = y_start + new_height
             cropped = image[y_start:y_end, :]
         
-        print(f"Cropped to {cropped.shape[1]}×{cropped.shape[0]} pixels")
+        print(f"Cropped to {cropped.shape[1]}x{cropped.shape[0]} pixels")
         return cropped
     
     def _rgb_to_lab(self, rgb_image: np.ndarray) -> np.ndarray:
@@ -204,9 +204,9 @@ class ImageLoader:
                 # Check dimensions
                 w, h = img.size
                 if w < 100 or h < 100:
-                    result['errors'].append(f"Image too small: {w}×{h} (minimum 100×100)")
+                    result['errors'].append(f"Image too small: {w}x{h} (minimum 100x100)")
                 elif w > 8000 or h > 8000:
-                    result['warnings'].append(f"Image very large: {w}×{h} (processing may be slow)")
+                    result['warnings'].append(f"Image very large: {w}x{h} (processing may be slow)")
                 
                 # Check mode
                 if img.mode not in ['RGB', 'RGBA', 'L']:

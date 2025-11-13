@@ -2,7 +2,7 @@
 
 # Print specifications (QBRIX standards)
 print_specs:
-  dpi: 600  # Print DPI (≥300 recommended, 600 for quality)
+  dpi: 600  # Print DPI (>=300 recommended, 600 for quality)
   margin_mm: 12.0  # A4 page margins in mm (10-15mm range)
   cell_size_mm: 2.8  # Drill/cell size in mm (2.3-3.0mm range)
   paper_size: "A4"  # Always A4 landscape for QBRIX
@@ -26,7 +26,7 @@ fixed_palettes:
 # Grid constraints (QBRIX requirements)
 grid_constraints:
   max_cells: 10000  # Hard cap on total cells
-  max_aspect_deviation: 0.02  # ±2% aspect ratio tolerance
+  max_aspect_deviation: 0.02  # +/-2% aspect ratio tolerance
   overlap_cells: 2  # Cell overlap between tiles for assembly
 
 # Quality thresholds
@@ -40,7 +40,7 @@ quality_thresholds:
 # Color science settings
 color_science:
   dmc_database: "data/dmc.csv"  # Canonical DMC color database
-  color_space: "Lab"  # Use Lab color space for ΔE2000
+  color_space: "Lab"  # Use Lab color space for DeltaE2000
   deltaE_method: "CIEDE2000"  # CIEDE2000 color difference
   enable_smoothing: true  # Spatial smoothing on index map
 
@@ -49,6 +49,22 @@ processing:
   seed: 42  # Random seed for reproducible results
   auto_crop: true  # Smart cropping to match grid aspect ratio
   normalize_exposure: true  # Exposure/contrast normalization
+  long_side_px: 1200
+  min_long_side_px: 900
+  exposure_clip_percent: 0.8
+  gamma_range:
+    - 0.9
+    - 1.1
+  denoise_sigma_color: 35
+  denoise_sigma_space: 5
+  saliency_threshold_percentile: 75
+  enable_face_detection: true
+  smoothing:
+    enabled: true
+    kernel: 3
+  popart:
+    edge_bias: 18.0
+    edge_threshold: 0.25
 
 # Output settings
 output:

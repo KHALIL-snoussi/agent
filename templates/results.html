@@ -352,19 +352,19 @@
 <body>
     <div class="container">
         <header>
-            <h1>🎉 Your Diamond Painting Kit is Ready!</h1>
+            <h1>[ready] Your Diamond Painting Kit is Ready!</h1>
             <p>Professional quality kit generated successfully</p>
         </header>
 
         <div class="success-banner fade-in">
-            <h2>✨ Kit Generation Complete</h2>
+            <h2>* Kit Generation Complete</h2>
             <p>Your image has been transformed into a professional diamond painting kit with DMC colors</p>
         </div>
 
         <div class="results-grid">
             <div class="card fade-in">
                 <div class="card-header">
-                    <h3>📊 Kit Statistics</h3>
+                    <h3>[chart] Kit Statistics</h3>
                 </div>
                 <div class="card-body">
                     <div class="stats-grid">
@@ -381,7 +381,7 @@
                             <div class="stat-label">Total Drills</div>
                         </div>
                         <div class="stat-item">
-                            <div class="stat-value">{{ image_info.width }}×{{ image_info.height }}</div>
+                            <div class="stat-value">{{ image_info.width }}x{{ image_info.height }}</div>
                             <div class="stat-label">Original Size</div>
                         </div>
                     </div>
@@ -412,7 +412,7 @@
 
             <div class="card fade-in">
                 <div class="card-header">
-                    <h3>🎨 Color Palette</h3>
+                    <h3>[kit] Color Palette</h3>
                 </div>
                 <div class="card-body">
                     <div class="color-palette">
@@ -429,7 +429,7 @@
 
         <div class="card fade-in">
             <div class="card-header">
-                <h3>👁️ Preview</h3>
+                <h3>[eye] Preview</h3>
             </div>
             <div class="card-body preview-section">
                 <img src="{{ url_for('serve_preview', filename=kit_result.preview_filename) }}" 
@@ -443,10 +443,10 @@
         </div>
 
         <div class="downloads-section fade-in">
-            <h2>📥 Download Your Kit Files</h2>
+            <h2>[download] Download Your Kit Files</h2>
             <div class="downloads-grid">
                 <div class="download-item">
-                    <div class="download-icon">📄</div>
+                    <div class="download-icon">[doc]</div>
                     <div class="download-title">Printable PDF</div>
                     <div class="download-description">
                         Complete instruction booklet with pattern grid and assembly guide
@@ -457,7 +457,7 @@
                 </div>
 
                 <div class="download-item">
-                    <div class="download-icon">📋</div>
+                    <div class="download-icon">[clipboard]</div>
                     <div class="download-title">Color Legend</div>
                     <div class="download-description">
                         CSV file with DMC color codes, drill counts, and bag organization
@@ -468,7 +468,7 @@
                 </div>
 
                 <div class="download-item">
-                    <div class="download-icon">🎨</div>
+                    <div class="download-icon">[kit]</div>
                     <div class="download-title">Preview Image</div>
                     <div class="download-description">
                         High-resolution preview of your completed diamond painting
@@ -479,13 +479,13 @@
                 </div>
 
                 <div class="download-item">
-                    <div class="download-icon">⚙️</div>
+                    <div class="download-icon">[gear]</div>
                     <div class="download-title">Kit Manifest</div>
                     <div class="download-description">
                         JSON file with all processing parameters and metadata
                     </div>
-                    <a href="{{ url_for('download_file', filename=kit_result.json_filename) }}" class="download-btn">
-                        Download JSON
+                    <a href="{{ url_for('download_file', filename=kit_result.metadata_filename) }}" class="download-btn">
+                        Download Metadata
                     </a>
                 </div>
             </div>
@@ -493,10 +493,10 @@
 
         <div class="actions-section fade-in">
             <a href="/" class="action-btn">
-                🎨 Create Another Kit
+                [kit] Create Another Kit
             </a>
             <a href="#" onclick="window.print(); return false;" class="action-btn secondary">
-                🖨️ Print This Page
+                [print] Print This Page
             </a>
         </div>
     </div>
@@ -529,7 +529,7 @@
         document.querySelectorAll('.download-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 const originalText = this.textContent;
-                this.textContent = '⬇️ Downloading...';
+                this.textContent = 'v Downloading...';
                 this.style.pointerEvents = 'none';
                 
                 // Reset after 2 seconds (in case download doesn't start immediately)

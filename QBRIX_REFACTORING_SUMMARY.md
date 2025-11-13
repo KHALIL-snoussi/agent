@@ -6,21 +6,21 @@ Successfully refactored and extended the existing diamond painting repository in
 
 ## Key Achievements
 
-### ✅ Fixed 7-Color DMC Palettes
+### [OK] Fixed 7-Color DMC Palettes
 - **ORIGINAL**: 310, B5200, 321, 444, 700, 797, 738 (Balanced, realistic enhancement)
 - **VINTAGE**: 3371, 3865, 801, 613, 3033, 372, 3790 (Warm sepia/heritage)  
 - **POPART**: 310, B5200, 666, 444, 700, 996, 915 (Bold high-contrast)
 
-### ✅ Quality Gates System
+### [OK] Quality Gates System
 - Automatic validation of all constraints
 - Palette invariance (exactly 7 colors, no modifications)
-- Cell cap enforcement (≤10,000 cells)
+- Cell cap enforcement (<=10,000 cells)
 - Grid consistency checks
 - Symbol legibility validation
 - Tiling coverage verification
-- Quality metrics (ΔE2000, SSIM, color accuracy)
+- Quality metrics (DeltaE2000, SSIM, color accuracy)
 
-### ✅ QBRIX-Style PDF Generation
+### [OK] QBRIX-Style PDF Generation
 - Multi-page numeric grid with row/column labels
 - Professional tile-based layout system
 - Registration marks and crop marks
@@ -29,14 +29,14 @@ Successfully refactored and extended the existing diamond painting repository in
 - Color legend with DMC codes and bag quantities
 - Assembly instructions
 
-### ✅ Complete Output Format Compliance
+### [OK] Complete Output Format Compliance
 - **PDF**: QBRIX-style instruction booklet
 - **CSV**: Exact format with cluster_id, drill counts, bag quantities
 - **JSON**: Comprehensive metadata with tiling map, hash, warnings
 - **Previews**: Original, palette-mapped, and style-specific overlays
 
-### ✅ Advanced Color Processing
-- ΔE2000-based quantization to fixed palettes
+### [OK] Advanced Color Processing
+- DeltaE2000-based quantization to fixed palettes
 - Lab color space processing
 - Grid index map with stable hashing
 - Optional spatial smoothing
@@ -51,7 +51,7 @@ Successfully refactored and extended the existing diamond painting repository in
 - `grid_index_map.py` - Stable grid representation with hashing
 
 ### Enhanced Existing Modules
-- `quantize.py` - Fixed palette quantization with ΔE2000
+- `quantize.py` - Fixed palette quantization with DeltaE2000
 - `pdf.py` - Complete QBRIX-style PDF generator
 - `kit_generator.py` - Unified workflow with quality gates
 - `export.py` - Exact CSV/JSON format compliance
@@ -75,15 +75,15 @@ python demo_qbrix_kit.py pixel.jpg --style vintage --dpi 600 --cell-size 2.5
 ## Technical Specifications
 
 ### Print & Scaling Math
-- **Paper**: A4 (210×297mm)
+- **Paper**: A4 (210x297mm)
 - **DPI**: 300-600 (configurable, default 600)
 - **Margins**: 12mm (configurable, range 10-15mm)
 - **Cell size**: 2.3-3.0mm (configurable, default 2.8mm)
-- **Grid limit**: ≤10,000 cells with automatic scaling
-- **Symbol legibility**: x-height ≥1.2mm, stroke ≥0.15mm
+- **Grid limit**: <=10,000 cells with automatic scaling
+- **Symbol legibility**: x-height >=1.2mm, stroke >=0.15mm
 
 ### Quality Metrics
-- **ΔE2000**: Color accuracy (mean/max statistics)
+- **DeltaE2000**: Color accuracy (mean/max statistics)
 - **SSIM**: Structural similarity analysis
 - **Color balance**: Distribution analysis with rare color warnings
 - **Scale factor**: Grid optimization tracking
@@ -135,19 +135,19 @@ preview_popart.jpg         # POPART style preview
 ## Quality Gates Validation
 
 ### Automatic Checks
-- ✅ Palette size == 7 colors
-- ✅ DMC codes match fixed palettes exactly
-- ✅ Total cells ≤ 10,000
-- ✅ Grid consistency across all outputs
-- ✅ Symbol legibility at print scale
-- ✅ Complete tiling coverage
-- ✅ Required metrics present
+- [OK] Palette size == 7 colors
+- [OK] DMC codes match fixed palettes exactly
+- [OK] Total cells <= 10,000
+- [OK] Grid consistency across all outputs
+- [OK] Symbol legibility at print scale
+- [OK] Complete tiling coverage
+- [OK] Required metrics present
 
 ### Warnings and Risks
 - High tiling overlap detection
 - Rare color identification (<2% usage)
 - Unused palette color warnings
-- Color accuracy risk (ΔE > 12)
+- Color accuracy risk (DeltaE > 12)
 - Detail loss risk (SSIM < 0.75)
 
 ## Demo Results
@@ -155,11 +155,11 @@ preview_popart.jpg         # POPART style preview
 ### Successful Test Run
 - **Input**: pixel.jpg
 - **Style**: ORIGINAL
-- **Grid**: 114×87 (9,918 cells)
+- **Grid**: 114x87 (9,918 cells)
 - **Pages**: 2 A4 pages
 - **Colors used**: 5/7 palette colors
 - **Quality**: NEEDS_IMPROVEMENT (with clear warnings)
-- **ΔE2000**: mean=45.26, max=58.76
+- **DeltaE2000**: mean=45.26, max=58.76
 - **Grid hash**: 488ed23a3baf13f1
 
 ### CSV Inventory Example
@@ -198,7 +198,7 @@ The refactored system is now production-ready for QBRIX-quality diamond painting
 
 - **Compliance**: All output formats match specifications exactly
 - **Quality**: Automated validation ensures print-ready results
-- **Scalability**: Handles the ≤10,000 cell constraint intelligently
+- **Scalability**: Handles the <=10,000 cell constraint intelligently
 - **Usability**: Clear CLI interface and detailed metadata
 - **Maintainability**: Well-documented code with clear architecture
 - **Reliability**: Quality gates prevent silent failures

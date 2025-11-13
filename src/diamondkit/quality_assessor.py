@@ -1,6 +1,6 @@
 """
 Quality assessment system for diamond painting kits.
-Handles SSIM, ΔE validation, rare color detection, and quality gates.
+Handles SSIM, DeltaE validation, rare color detection, and quality gates.
 """
 
 import numpy as np
@@ -153,7 +153,7 @@ class QualityAssessor:
     
     def _calculate_delta_e_statistics(self, original_lab: np.ndarray, 
                                  grid_map: GridIndexMap) -> Dict[str, float]:
-        """Calculate ΔE statistics between original and quantized images."""
+        """Calculate DeltaE statistics between original and quantized images."""
         from .grid_index_map import ColorQuantizerFixed
         
         # Use the quantizer's method for consistency
@@ -206,9 +206,9 @@ class QualityAssessor:
             risks.append("Loss of fine details in quantized result")
             fixes.append("Consider larger grid size or different crop to preserve details")
         
-        # ΔE max check
+        # DeltaE max check
         if delta_e_stats["delta_e_max"] > self.DELTA_E_MAX_THRESHOLD:
-            warnings.append(f"Color accuracy risk: ΔE_max {delta_e_stats['delta_e_max']:.1f} > {self.DELTA_E_MAX_THRESHOLD}")
+            warnings.append(f"Color accuracy risk: DeltaE_max {delta_e_stats['delta_e_max']:.1f} > {self.DELTA_E_MAX_THRESHOLD}")
             risks.append("Some colors may not accurately represent original")
             fixes.append("Consider different style palette or preprocessing adjustments")
         
@@ -248,7 +248,7 @@ class QualityAssessor:
         else:
             score += 10
         
-        # ΔE component (30% weight)
+        # DeltaE component (30% weight)
         if delta_e_stats["delta_e_max"] <= 6.0:
             score += 30
         elif delta_e_stats["delta_e_max"] <= self.DELTA_E_MAX_THRESHOLD:
@@ -333,7 +333,7 @@ class QualityAssessor:
             return "Poor structural similarity"
     
     def _interpret_delta_e(self, delta_e_max: float) -> str:
-        """Interpret maximum ΔE value."""
+        """Interpret maximum DeltaE value."""
         if delta_e_max <= 6.0:
             return "Excellent color accuracy"
         elif delta_e_max <= self.DELTA_E_MAX_THRESHOLD:
@@ -368,7 +368,7 @@ class QualityAssessor:
         elif metrics.ssim_score < self.SSIM_THRESHOLD:
             recommendations.append("Consider different crop to focus on important details")
         
-        # ΔE-based recommendations
+        # DeltaE-based recommendations
         if metrics.delta_e_max > 15.0:
             recommendations.append("Current style may not match image colors - try different style")
         elif metrics.delta_e_max > self.DELTA_E_MAX_THRESHOLD:

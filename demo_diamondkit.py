@@ -51,7 +51,7 @@ def demo_basic_usage():
     
     print(f"Input image: {config.input}")
     print(f"Output directory: {config.output_dir}")
-    print(f"Canvas size: {config.canvas.width_cm}×{config.canvas.height_cm} cm")
+    print(f"Canvas size: {config.canvas.width_cm}x{config.canvas.height_cm} cm")
     print(f"Max colors: {config.palette.max_colors}")
     print(f"Dithering: {config.dither.mode}")
     print()
@@ -67,15 +67,15 @@ def demo_basic_usage():
         validation = image_loader.validate_image(config.input)
         
         if not validation['valid']:
-            print("❌ Image validation failed:")
+            print("[X] Image validation failed:")
             for error in validation['errors']:
                 print(f"  - {error}")
             return False
         
-        print("✅ Image validation passed")
+        print("[OK] Image validation passed")
         
         if validation['warnings']:
-            print("⚠️  Warnings:")
+            print("[WARN]  Warnings:")
             for warning in validation['warnings']:
                 print(f"  - {warning}")
         
@@ -83,17 +83,17 @@ def demo_basic_usage():
         print("\nGetting image information...")
         info = image_loader.get_image_info(config.input)
         if 'error' not in info:
-            print(f"✅ Image info: {info['size']} pixels, {info['unique_colors']} unique colors")
+            print(f"[OK] Image info: {info['size']} pixels, {info['unique_colors']} unique colors")
             print(f"   Estimated difficulty: {info['estimated_difficulty']}")
         
-        print("\n✅ Demo setup complete!")
+        print("\n[OK] Demo setup complete!")
         print("\nTo generate a complete kit, run:")
         print(f"python -m diamondkit.cli {config.input} {config.output_dir} --canvas-size 20x30 --max-colors 15")
         
         return True
         
     except Exception as e:
-        print(f"❌ Demo failed: {e}")
+        print(f"[X] Demo failed: {e}")
         return False
 
 
@@ -131,12 +131,12 @@ def demo_color_analysis():
         print("\nColor matching examples:")
         for rgb in test_colors:
             nearest = dmc_palette.find_nearest_color(rgb)
-            print(f"  RGB{rgb} → {nearest.dmc_code:>6} {nearest.name:<20} RGB{nearest.rgb}")
+            print(f"  RGB{rgb} -> {nearest.dmc_code:>6} {nearest.name:<20} RGB{nearest.rgb}")
         
         return True
         
     except Exception as e:
-        print(f"❌ Color analysis failed: {e}")
+        print(f"[X] Color analysis failed: {e}")
         return False
 
 
@@ -150,7 +150,7 @@ def demo_config_system():
         # Create default config
         config = Config()
         print("Default configuration:")
-        print(f"  Canvas: {config.canvas.width_cm}×{config.canvas.height_cm} cm")
+        print(f"  Canvas: {config.canvas.width_cm}x{config.canvas.height_cm} cm")
         print(f"  Drill shape: {config.canvas.drill_shape}")
         print(f"  Drill size: {config.canvas.drill_size_mm} mm")
         print(f"  Max colors: {config.palette.max_colors}")
@@ -161,11 +161,11 @@ def demo_config_system():
         # Test canvas calculations
         print(f"\nCanvas calculations:")
         print(f"  Aspect ratio: {config.canvas.aspect_ratio:.3f}")
-        print(f"  Grid size: {config.canvas.cells_w}×{config.canvas.cells_h} cells")
+        print(f"  Grid size: {config.canvas.cells_w}x{config.canvas.cells_h} cells")
         print(f"  Total cells: {config.canvas.cells_w * config.canvas.cells_h:,}")
         
         # Test validation
-        print(f"\nConfiguration validation: ✅ PASSED")
+        print(f"\nConfiguration validation: [OK] PASSED")
         
         # Test YAML export
         config.save_yaml("demo_config.yaml")
@@ -174,7 +174,7 @@ def demo_config_system():
         return True
         
     except Exception as e:
-        print(f"❌ Config demo failed: {e}")
+        print(f"[X] Config demo failed: {e}")
         return False
 
 
@@ -189,7 +189,7 @@ def main_demo():
     
     args = parser.parse_args()
     
-    print("🎨 Diamond Painting Kit Generator - Demo")
+    print("[kit] Diamond Painting Kit Generator - Demo")
     print("=====================================")
     
     # Always run config and color analysis demos
@@ -210,13 +210,13 @@ def main_demo():
         print("This requires a sample image named 'pixel.jpg' in the current directory.")
     
     if success:
-        print("\n✅ Demo completed successfully!")
+        print("\n[OK] Demo completed successfully!")
         print("\nNext steps:")
         print("1. Place your image in the current directory")
         print("2. Run: python -m diamondkit.cli your_image.jpg output_folder/")
         print("3. Check the generated PDF and other files")
     else:
-        print("\n❌ Demo encountered issues. Please check the error messages above.")
+        print("\n[X] Demo encountered issues. Please check the error messages above.")
     
     return 0 if success else 1
 

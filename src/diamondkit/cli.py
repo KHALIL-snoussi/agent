@@ -65,7 +65,7 @@ Examples:
         "--dpi",
         type=int,
         default=600,
-        help="Print DPI (≥300 required, default: 600)"
+        help="Print DPI (>=300 required, default: 600)"
     )
     parser.add_argument(
         "--margin-mm",
@@ -139,7 +139,7 @@ def validate_arguments(args: argparse.Namespace) -> bool:
     
     # Validate print specifications
     if args.dpi < 300:
-        print("Error: DPI must be ≥ 300 for print quality")
+        print("Error: DPI must be >= 300 for print quality")
         return False
     
     if not (10 <= args.margin_mm <= 15):
@@ -253,7 +253,7 @@ def generate_kit(args: argparse.Namespace) -> bool:
         
         # Display results
         print("\n" + "="*60)
-        print("✓ KIT GENERATION COMPLETE")
+        print("[OK] KIT GENERATION COMPLETE")
         print("="*60)
         
         metadata = results["metadata"]
@@ -262,29 +262,54 @@ def generate_kit(args: argparse.Namespace) -> bool:
         
         print(f"Output directory: {args.output}")
         print(f"Style: {metadata.get('generation_info', {}).get('style', 'N/A')}")
-        print(f"Grid size: {grid_specs.cols} × {grid_specs.rows} ({grid_specs.total_cells:,} cells)")
+        print(f"Grid size: {grid_specs.cols} x {grid_specs.rows} ({grid_specs.total_cells:,} cells)")
         print(f"Total pages: {metadata.get('print_specifications', {}).get('total_pages', 'N/A')}")
         print(f"Grid hash: {metadata.get('generation_info', {}).get('grid_hash', 'N/A')}")
         
+        qa = metadata.get('quality_assessment', {})
         print(f"\nQuality Assessment:")
-        print(f"  Overall Quality: {metadata.get('quality_assessment', {}).get('overall_quality', 'N/A')}")
-        print(f"  ΔE Mean: {metadata.get('quality_assessment', {}).get('delta_e_mean', 0):.2f}")
-        print(f"  ΔE Max: {metadata.get('quality_assessment', {}).get('delta_e_max', 0):.2f}")
-        print(f"  SSIM: {metadata.get('quality_assessment', {}).get('ssim_score', 0):.4f}")
+        print(f"  Overall Quality: {qa.get('overall_quality', 'N/A')}")
+        print(f"  DeltaE Mean: {qa.get('delta_e_mean', 0):.2f}")
+        print(f"  DeltaE Max: {qa.get('delta_e_max', 0):.2f}")
+        print(f"  SSIM: {qa.get('ssim_score', 0):.4f}")
+        scale_factor = metadata.get('scale_factor')
+        if scale_factor is not None:
+            print(f"  Scale Factor: {scale_factor:.3f}")
+            if scale_factor < 0.1:
+                print("  [WARN] Scale factor below 0.10 - consider a tighter crop or simpler image.")
+            elif scale_factor < 0.5:
+                print("  [WARN] Significant downscale applied to fit the 10k cell limit.")
         
-        if metadata.get('warnings'):
+        quality_warnings = metadata.get('quality_warnings', [])
+        if quality_warnings:
             print(f"\nWarnings:")
-            for warning in metadata['warnings']:
-                print(f"  ⚠ {warning}")
+            for warning in quality_warnings:
+                print(f"  [WARN] {warning}")
+        
+        quality_risks = metadata.get('quality_risks', [])
+        if quality_risks:
+            print(f"\nRisks:")
+            for risk in quality_risks:
+                print(f"  [RISK] {risk}")
+        
+        gates = metadata.get('quality_gates', {})
+        if gates:
+            print(f"\nQuality Gates:")
+            passed_txt = "PASS" if gates.get('passed') else "CHECK"
+            print(f"  Status: {passed_txt}")
+            for warning in gates.get('warnings', []):
+                print(f"  [WARN] {warning}")
+            for error in gates.get('errors', []):
+                print(f"  [ERROR] {error}")
         
         print(f"\nGenerated Files:")
         for key, filename in results["outputs"].items():
-            print(f"  ✓ {filename}")
+            print(f"  [OK] {filename}")
         
         return True
         
     except Exception as e:
-        print(f"\n✗ Error during kit generation: {e}")
+        print(f"\n[X] Error during kit generation: {e}")
         if args.verbose:
             import traceback
             traceback.print_exc()

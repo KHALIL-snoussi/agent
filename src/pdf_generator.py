@@ -100,7 +100,7 @@ class PDFGenerator:
             canvas.saveState()
             canvas.setFont('Helvetica', 8)
             canvas.setFillColorRGB(0.5, 0.5, 0.5)
-            canvas.drawCentredString(self.page_width/2, 15, f"Print at 100% scale • Page {doc.page}")
+            canvas.drawCentredString(self.page_width/2, 15, f"Print at 100% scale - Page {doc.page}")
             if retrieval_code:
                 canvas.drawRightString(self.page_width - self.margin, 15, f"Code: {retrieval_code}")
             canvas.restoreState()
@@ -121,7 +121,7 @@ class PDFGenerator:
             story.append(Paragraph(style_info, self.styles['Heading3']))
         
         # Canvas info
-        canvas_info = f"Canvas Size: {self.config.canvas.width_cm}×{self.config.canvas.height_cm} cm"
+        canvas_info = f"Canvas Size: {self.config.canvas.width_cm}x{self.config.canvas.height_cm} cm"
         story.append(Paragraph(canvas_info, self.styles['Heading2']))
         story.append(Spacer(1, 12))
         
@@ -139,10 +139,10 @@ class PDFGenerator:
         # Kit information
         info_text = f"""
         <b>Kit Details:</b><br/>
-        • Color Count: {len(self.config.palette)}<br/>
-        • Drill Size: {self.config.canvas.drill_size_mm} mm<br/>
-        • Total Pattern Size: {quantized_image.shape[1]}×{quantized_image.shape[0]} drills<br/>
-        • Difficulty: {'Beginner' if len(self.config.palette) <= 7 else 'Intermediate'}
+        - Color Count: {len(self.config.palette)}<br/>
+        - Drill Size: {self.config.canvas.drill_size_mm} mm<br/>
+        - Total Pattern Size: {quantized_image.shape[1]}x{quantized_image.shape[0]} drills<br/>
+        - Difficulty: {'Beginner' if len(self.config.palette) <= 7 else 'Intermediate'}
         """
         story.append(Paragraph(info_text, self.styles['Normal']))
         
@@ -212,56 +212,56 @@ class PDFGenerator:
         story.append(Paragraph("Assembly Instructions", self.styles['SectionHeader']))
         
         # Quick Start section
-        story.append(Paragraph("🚀 Quick Start (New to paint-by-numbers?)", 
+        story.append(Paragraph("[launch] Quick Start (New to paint-by-numbers?)", 
                            self.styles['Heading2']))
         story.append(Spacer(1, 6))
         
         quick_start = """
-        <b>START HERE → Follow these 4 simple steps:</b><br/><br/>
+        <b>START HERE -> Follow these 4 simple steps:</b><br/><br/>
         
-        1️⃣ <b>Organize Colors:</b> Sort your drills/paints by the numbers in the legend<br/>
-        2️⃣ <b>Find Symbol #1:</b> Look for the first symbol in the top-left corner<br/>
-        3️⃣ <b>Match & Apply:</b> Find the matching color and place it on the canvas<br/>
-        4️⃣ <b>Continue Pattern:</b> Work in sections, following the symbol grid<br/><br/>
+        1 <b>Organize Colors:</b> Sort your drills/paints by the numbers in the legend<br/>
+        2 <b>Find Symbol #1:</b> Look for the first symbol in the top-left corner<br/>
+        3 <b>Match & Apply:</b> Find the matching color and place it on the canvas<br/>
+        4 <b>Continue Pattern:</b> Work in sections, following the symbol grid<br/><br/>
         
-        <b>💡 Pro Tip:</b> Complete one color at a time for faster results!
+        <b>[tip] Pro Tip:</b> Complete one color at a time for faster results!
         """
         
         story.append(Paragraph(quick_start, self.styles['Normal']))
         story.append(Spacer(1, 12))
         
         # Detailed instructions
-        story.append(Paragraph("📖 Detailed Guide", self.styles['Heading2']))
+        story.append(Paragraph("[book] Detailed Guide", self.styles['Heading2']))
         story.append(Spacer(1, 6))
         
         detailed = """
-        <b>🎨 Preparation:</b><br/>
-        • Canvas: Ensure it's clean, flat, and well-lit<br/>
-        • Workspace: Comfortable chair, good lighting, organized colors<br/>
-        • Tools: Applicator pen, wax, and tray (for diamond painting)<br/><br/>
+        <b>[kit] Preparation:</b><br/>
+        - Canvas: Ensure it's clean, flat, and well-lit<br/>
+        - Workspace: Comfortable chair, good lighting, organized colors<br/>
+        - Tools: Applicator pen, wax, and tray (for diamond painting)<br/><br/>
         
-        <b>🔍 Reading Your Pattern:</b><br/>
-        • Symbols: Each unique shape = one specific color<br/>
-        • Direction: Work top-to-bottom, left-to-right<br/>
-        • Reference: Keep the legend handy while working<br/>
-        • Grid lines: Bold 10×10 sections help track progress<br/><br/>
+        <b>[search] Reading Your Pattern:</b><br/>
+        - Symbols: Each unique shape = one specific color<br/>
+        - Direction: Work top-to-bottom, left-to-right<br/>
+        - Reference: Keep the legend handy while working<br/>
+        - Grid lines: Bold 10x10 sections help track progress<br/><br/>
         
-        <b>✨ Assembly Techniques:</b><br/>
-        • Small sections: Work in 2×2 inch areas for best control<br/>
-        • Color blocking: Complete one color before moving to the next<br/>
-        • Quality check: Ensure all symbols are covered before moving on<br/>
-        • Storage: Keep unused drills sealed to prevent mixing<br/><br/>
+        <b>* Assembly Techniques:</b><br/>
+        - Small sections: Work in 2x2 inch areas for best control<br/>
+        - Color blocking: Complete one color before moving to the next<br/>
+        - Quality check: Ensure all symbols are covered before moving on<br/>
+        - Storage: Keep unused drills sealed to prevent mixing<br/><br/>
         
-        <b>⏱️ Time Management:</b><br/>
-        • Estimated time: {estimated_time}<br/>
-        • Break schedule: Rest every 30-45 minutes<br/>
-        • Progress: Use 10×10 grid sections to track completion<br/><br/>
+        <b>Time Time Management:</b><br/>
+        - Estimated time: {estimated_time}<br/>
+        - Break schedule: Rest every 30-45 minutes<br/>
+        - Progress: Use 10x10 grid sections to track completion<br/><br/>
         
-        <b>🏁 Finishing Touches:</b><br/>
-        • Inspection: Check for any missed symbols<br/>
-        • Pressing: Gently press finished sections to secure<br/>
-        • Sealing: Optional protective spray for longevity<br/>
-        • Display: Frame or mount your completed artwork!
+        <b>[finish] Finishing Touches:</b><br/>
+        - Inspection: Check for any missed symbols<br/>
+        - Pressing: Gently press finished sections to secure<br/>
+        - Sealing: Optional protective spray for longevity<br/>
+        - Display: Frame or mount your completed artwork!
         """.format(estimated_time=self._estimate_completion_time())
         
         story.append(Paragraph(detailed, self.styles['Normal']))
@@ -269,11 +269,11 @@ class PDFGenerator:
         
         # Help section
         help_text = """
-        <b>❓ Need Help?</b><br/>
-        • Lost your code? Check your email or contact support<br/>
-        • Color questions? Reference the legend on page 2<br/>
-        • Pattern issues? Use the grid lines to stay on track<br/>
-        • Tips for beginners: Start with larger areas first
+        <b>[?] Need Help?</b><br/>
+        - Lost your code? Check your email or contact support<br/>
+        - Color questions? Reference the legend on page 2<br/>
+        - Pattern issues? Use the grid lines to stay on track<br/>
+        - Tips for beginners: Start with larger areas first
         """
         
         story.append(Paragraph(help_text, self.styles['Normal']))
@@ -393,7 +393,7 @@ class PDFGenerator:
         
         draw = ImageDraw.Draw(img)
         
-        # Draw 10×10 grid lines for easier tracking
+        # Draw 10x10 grid lines for easier tracking
         for y in range(h):
             for x in range(w):
                 # Draw cell boundaries (light gray)

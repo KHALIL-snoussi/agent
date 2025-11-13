@@ -65,13 +65,13 @@ def demo_system():
             grid_specs = result['grid_specs']
             quality_report = result['quality_report']
             
-            print(f"✓ Generated successfully!")
-            print(f"  Grid: {grid_specs.cols}×{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
+            print(f"[OK] Generated successfully!")
+            print(f"  Grid: {grid_specs.cols}x{grid_specs.rows} ({grid_specs.total_cells:,} cells)")
             print(f"  Pages: {metadata['print_specifications']['total_pages']}")
             print(f"  Quality: {quality_report['summary']['overall_quality']}")
             print(f"  SSIM: {quality_report['summary']['ssim_score']:.4f}")
-            print(f"  ΔE mean: {quality_report['summary']['delta_e_mean']:.2f}")
-            print(f"  ΔE max: {quality_report['summary']['delta_e_max']:.2f}")
+            print(f"  DeltaE mean: {quality_report['summary']['delta_e_mean']:.2f}")
+            print(f"  DeltaE max: {quality_report['summary']['delta_e_max']:.2f}")
             
             # Show warnings if any
             if quality_report['quality_gates']['warnings']:
@@ -99,7 +99,7 @@ def demo_system():
                     print(f"    - {filename} (pending)")
             
         except Exception as e:
-            print(f"✗ Error generating {style} kit: {e}")
+            print(f"[X] Error generating {style} kit: {e}")
             import traceback
             traceback.print_exc()
     
@@ -111,21 +111,21 @@ def demo_system():
         vintage_palette = manager.get_palette("VINTAGE")
         popart_palette = manager.get_palette("POPART")
         
-        print(f"✓ ORIGINAL palette: {original_palette.dmc_codes}")
-        print(f"✓ VINTAGE palette: {vintage_palette.dmc_codes}")
-        print(f"✓ POPART palette: {popart_palette.dmc_codes}")
+        print(f"[OK] ORIGINAL palette: {original_palette.dmc_codes}")
+        print(f"[OK] VINTAGE palette: {vintage_palette.dmc_codes}")
+        print(f"[OK] POPART palette: {popart_palette.dmc_codes}")
         
         # Verify all have exactly 7 colors
         for name, palette in [("ORIGINAL", original_palette), 
                             ("VINTAGE", vintage_palette), 
                             ("POPART", popart_palette)]:
             if len(palette.dmc_codes) == 7:
-                print(f"✓ {name}: Exactly 7 colors (COMPLIANT)")
+                print(f"[OK] {name}: Exactly 7 colors (COMPLIANT)")
             else:
-                print(f"✗ {name}: {len(palette.dmc_codes)} colors (VIOLATION)")
+                print(f"[X] {name}: {len(palette.dmc_codes)} colors (VIOLATION)")
         
     except Exception as e:
-        print(f"✗ Palette invariance test failed: {e}")
+        print(f"[X] Palette invariance test failed: {e}")
     
     # 4. Demonstrate print math compliance
     print(f"\n4. PRINT MATH COMPLIANCE:")
@@ -133,54 +133,54 @@ def demo_system():
         engine = get_print_math_engine()
         specs = engine.specs
         
-        print(f"✓ Paper: A4 ({specs.paper_width_mm}×{specs.paper_height_mm} mm)")
-        print(f"✓ DPI: {specs.dpi} (≥300 required)")
-        print(f"✓ Margins: {specs.margin_mm} mm (10-15mm range)")
-        print(f"✓ Cell size: {specs.cell_size_mm} mm (2.3-3.0mm range)")
+        print(f"[OK] Paper: A4 ({specs.paper_width_mm}x{specs.paper_height_mm} mm)")
+        print(f"[OK] DPI: {specs.dpi} (>=300 required)")
+        print(f"[OK] Margins: {specs.margin_mm} mm (10-15mm range)")
+        print(f"[OK] Cell size: {specs.cell_size_mm} mm (2.3-3.0mm range)")
         
         # Verify constraints
         if 10 <= specs.margin_mm <= 15:
-            print(f"✓ Margins within specification")
+            print(f"[OK] Margins within specification")
         else:
-            print(f"✗ Margins outside specification")
+            print(f"[X] Margins outside specification")
         
         if 2.3 <= specs.cell_size_mm <= 3.0:
-            print(f"✓ Cell size within specification")
+            print(f"[OK] Cell size within specification")
         else:
-            print(f"✗ Cell size outside specification")
+            print(f"[X] Cell size outside specification")
         
         if specs.dpi >= 300:
-            print(f"✓ DPI sufficient for print quality")
+            print(f"[OK] DPI sufficient for print quality")
         else:
-            print(f"✗ DPI insufficient for print quality")
+            print(f"[X] DPI insufficient for print quality")
         
         # Test 10k cell cap
         from diamondkit.print_math import GridSpecs
         test_grid = GridSpecs(150, 150, 22500)  # Exceeds 10k
         
-        print(f"✓ 10k cell cap enforcement test:")
-        print(f"  Input grid: 150×150 = 22,500 cells")
+        print(f"[OK] 10k cell cap enforcement test:")
+        print(f"  Input grid: 150x150 = 22,500 cells")
         
         scaled_grid, scale_factor = engine.calculate_grid_from_image(150, 150)
-        print(f"  Scaled grid: {scaled_grid.cols}×{scaled_grid.rows} = {scaled_grid.total_cells:,} cells")
+        print(f"  Scaled grid: {scaled_grid.cols}x{scaled_grid.rows} = {scaled_grid.total_cells:,} cells")
         print(f"  Scale factor: {scale_factor:.3f}")
         
         if scaled_grid.total_cells <= 10000:
-            print(f"✓ 10k cap properly enforced")
+            print(f"[OK] 10k cap properly enforced")
         else:
-            print(f"✗ 10k cap violation")
+            print(f"[X] 10k cap violation")
         
     except Exception as e:
-        print(f"✗ Print math compliance test failed: {e}")
+        print(f"[X] Print math compliance test failed: {e}")
     
     # 5. Summary
     print(f"\n5. SYSTEM VALIDATION SUMMARY:")
-    print(f"✓ Fixed 7-color palettes (ORIGINAL, VINTAGE, POPART)")
-    print(f"✓ ΔE2000 color quantization with invariance")
-    print(f"✓ A4 print math with 10k cell enforcement")
-    print(f"✓ Quality assessment (SSIM ≥0.75, ΔE_max ≤12)")
-    print(f"✓ All required output formats (CSV, JSON, previews)")
-    print(f"✓ Commercial-grade specifications compliance")
+    print(f"[OK] Fixed 7-color palettes (ORIGINAL, VINTAGE, POPART)")
+    print(f"[OK] DeltaE2000 color quantization with invariance")
+    print(f"[OK] A4 print math with 10k cell enforcement")
+    print(f"[OK] Quality assessment (SSIM >=0.75, DeltaE_max <=12)")
+    print(f"[OK] All required output formats (CSV, JSON, previews)")
+    print(f"[OK] Commercial-grade specifications compliance")
     
     print(f"\nDemo complete! Check output directories for generated kits.")
     print("=" * 60)
